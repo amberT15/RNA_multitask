@@ -1,9 +1,6 @@
 import rna_model
-import torch
-import pytorch_lightning as pl
 from transformers import RobertaConfig, RobertaForMaskedLM
 from transformers import Trainer, TrainingArguments
-from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
 from sequence_models.constants import SPECIALS
 import wandb
