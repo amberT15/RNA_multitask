@@ -4,7 +4,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import pytorch_lightning as pl
 import numpy as np
-from torchinfo import summary
 import h5py
 import torchmetrics
 from sequence_models.convolutional import ByteNet
