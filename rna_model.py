@@ -67,10 +67,14 @@ class bert_data(Dataset):
 
     def __getitem__(self,index):
         seq = self.h5_file[index]
-        list_seq = [seq.decode("utf-8")]
+        list_seq = [[seq.decode("utf-8")]]
         inputs,targets,attention_mask = self.collater(list_seq)
         mask = (attention_mask==0)
         targets[mask] = -100
+        #dimension adjust
+        inputs = np.squeeze(inputs)
+        targets = np.squeeze(targets)
+
         return {'input_ids': inputs, 'labels': targets}
 
 class ByteNetLM(pl.LightningModule):
