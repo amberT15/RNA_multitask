@@ -32,9 +32,10 @@ if args.local_rank == 0:
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
-        per_device_train_batch_size=16,
+        per_device_train_batch_size=52,
         save_steps=500,
-        save_total_limit=2
+        save_total_limit=2,
+        ddp_find_unused_parameters = False
         ,report_to="wandb"
     )
     log_config = {**configuration.to_dict(),**training_args.to_dict()}
@@ -47,9 +48,10 @@ else:
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
-        per_device_train_batch_size=32,
+        per_device_train_batch_size=52,
         save_steps=500,
-        save_total_limit=2
+        save_total_limit=2,
+        ddp_find_unused_parameters = False
     )
 
 
