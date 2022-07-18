@@ -32,7 +32,7 @@ if args.local_rank == 0:
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
-        per_device_train_batch_size=52,
+        per_device_train_batch_size=48,
         save_steps=500,
         save_total_limit=2,
         ddp_find_unused_parameters = False
@@ -48,7 +48,7 @@ else:
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
-        per_device_train_batch_size=52,
+        per_device_train_batch_size=48,
         save_steps=500,
         save_total_limit=2,
         ddp_find_unused_parameters = False
