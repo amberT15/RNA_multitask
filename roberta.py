@@ -12,7 +12,7 @@ wandb.login()
 torch.manual_seed(0)
 RNA='ACGTN'
 RNA_ALPHABET = SPECIALS+RNA
-seq_data = rna_model.rna_self_mask('./data/pre-train/512/rna_seq.h5',RNA,SPECIALS)
+seq_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5',RNA,SPECIALS)
 train_data,valid_data = random_split(seq_data,[int(len(seq_data)*0.9),int(len(seq_data)*0.1)+1])
 
 # Initializing a RoBERTa configuration
@@ -32,7 +32,7 @@ training_args = TrainingArguments(
     overwrite_output_dir=True,
     num_train_epochs=10,
     do_train=True,
-    per_device_train_batch_size=1,
+    per_device_train_batch_size=32,
     save_steps=500,
     save_total_limit=2
     ,report_to="wandb"
