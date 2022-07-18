@@ -5,11 +5,73 @@ from torchvision import transforms
 import pytorch_lightning as pl
 import numpy as np
 import h5py
+import random
 import torchmetrics
+import sequence_models
 from sequence_models.convolutional import ByteNet
 from sequence_models.layers import PositionFeedForward
 from sequence_models.losses import MaskedCrossEntropyLoss
-from sequence_models.collaters import  MLMCollater
+from sequence_models.collaters import  SimpleCollater,_pad
+from sequence_models.constants import PAD,ALL_AAS,MASK,START,STOP
+
+class BertCollater(SimpleCollater):
+    """Collater for masked language sequence models.
+
+    Parameters:
+        alphabet (str)
+        pad (Boolean)
+
+    Input (list): a batch of sequences as strings
+    Output:
+        src (torch.LongTensor): corrupted input + padding
+        tgt (torch.LongTensor): input + padding
+        mask (torch.LongTensor): 1 where loss should be calculated for tgt
+    """
+
+    def __init__(self, alphabet: str, pad=False, backwards=False, pad_token=PAD, mut_alphabet=ALL_AAS):
+        super().__init__(alphabet, pad=pad, backwards=backwards, pad_token=pad_token)
+        self.mut_alphabet=mut_alphabet
+
+    def _prep(self, sequences):
+        tgt = [START + s + STOP for s in sequences]
+        sequences = [START + s + STOP for s in sequences]
+        #tgt = list(sequences[:])
+        src = []
+        mask = []
+        for seq in sequences:
+            if len(seq) == 2:
+                tgt.remove(seq)
+                continue
+            mod_idx = random.sample(list(range(len(seq))), int(len(seq) * 0.15))
+            if len(mod_idx) == 0:
+                mod_idx = [np.random.choice(len(seq))]  # make sure at least one aa is chosen
+            seq_mod = list(seq)
+            for idx in mod_idx:
+                p = np.random.uniform()
+                if p <= 0.10:  # do nothing
+                    mod = seq[idx]
+                elif 0.10 < p <= 0.20:  # replace with random amino acid
+                    mod = np.random.choice([i for i in self.mut_alphabet if i != seq[idx]])
+                else:  # mask
+                    mod = MASK
+                seq_mod[idx] = mod
+            src.append(''.join(seq_mod))
+            m = torch.zeros(len(seq_mod))
+            m[mod_idx] = 1
+            mask.append(m)
+        src = [ torch.LongTensor(self.tokenizer.tokenize(s)) for s in src ]
+        tgt = [ torch.LongTensor(self.tokenizer.tokenize(s)) for s in tgt ]
+        pad_idx = self.tokenizer.alphabet.index(PAD)
+        src = _pad(src, pad_idx)
+        tgt = _pad(tgt, pad_idx)
+        mask = _pad(mask, 0)
+        
+        label_mask = (mask==0)
+        tgt[label_mask] = -100
+        #return src, tgt, mask
+        #return{'input_ids':src,'labels':tgt,'attention_mask':mask}
+        return{'input_ids':src,'labels':tgt}
+
 
 class mt_splice_data(Dataset):
     def __init__(self,h5_path,dataset):
@@ -59,7 +121,7 @@ class rna_self_mask(Dataset):
 
 class bert_data(Dataset):
     def __init__(self,h5_path,ALPHABET,SPECIAL):
-        self.collater = MLMCollater(ALPHABET+SPECIAL,True,False,mut_alphabet=ALPHABET)
+        self.collater = sequence_models.MLMCollater(ALPHABET+SPECIAL,False,False,mut_alphabet=ALPHABET)
         self.h5_file = h5py.File(h5_path, "r")['seq']
 
     def __len__(self):
