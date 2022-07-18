@@ -11,16 +11,19 @@ import wandb
 wandb.login()
 torch.manual_seed(0)
 RNA='ACGTN'
-RNA_ALPHABET = RNA+SPECIALS
-seq_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5',RNA,SPECIALS)
+RNA_ALPHABET = SPECIALS+RNA
+seq_data = rna_model.rna_self_mask('./data/pre-train/512/rna_seq.h5',RNA,SPECIALS)
 train_data,valid_data = random_split(seq_data,[int(len(seq_data)*0.9),int(len(seq_data)*0.1)+1])
 
+# Initializing a RoBERTa configuration
 # Initializing a RoBERTa configuration
 configuration = RobertaConfig(vocab_size = len(RNA_ALPHABET),
                             pad_token_id = RNA_ALPHABET.index(PAD),
                             eos_token_id = RNA_ALPHABET.index(STOP),
                             bos_token_id = RNA_ALPHABET.index(START),
-                            type_vocab_size = 1 )
+                            type_vocab_size = 1,
+                            layer_norm_eps = 1e-05,
+                            max_position_embeddings = 514 )
 # Initializing a model from the configuration
 model = RobertaForMaskedLM(configuration)
 
@@ -29,7 +32,7 @@ training_args = TrainingArguments(
     overwrite_output_dir=True,
     num_train_epochs=10,
     do_train=True,
-    per_device_train_batch_size=16,
+    per_device_train_batch_size=1,
     save_steps=500,
     save_total_limit=2
     ,report_to="wandb"
