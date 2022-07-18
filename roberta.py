@@ -4,11 +4,9 @@ from transformers import RobertaConfig, RobertaForMaskedLM
 from transformers import Trainer, TrainingArguments
 from torch.utils.data.dataset import random_split
 from sequence_models.constants import SPECIALS,PAD,START,STOP,MASK
-import os
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-
+import utils
 import wandb
-wandb.login()
+
 torch.manual_seed(0)
 RNA='ACGTN'
 RNA_ALPHABET = SPECIALS+RNA
@@ -26,21 +24,35 @@ configuration = RobertaConfig(vocab_size = len(RNA_ALPHABET),
                             max_position_embeddings = 514 )
 # Initializing a model from the configuration
 model = RobertaForMaskedLM(configuration)
+args = utils.parse_args()
 
-training_args = TrainingArguments(
-    output_dir="./bert",
-    overwrite_output_dir=True,
-    num_train_epochs=10,
-    do_train=True,
-    per_device_train_batch_size=32,
-    save_steps=500,
-    save_total_limit=2
-    ,report_to="wandb"
-)
+if args.local_rank == 0:
+    training_args = TrainingArguments(
+        output_dir="./bert",
+        overwrite_output_dir=True,
+        num_train_epochs=10,
+        do_train=True,
+        per_device_train_batch_size=16,
+        save_steps=500,
+        save_total_limit=2
+        ,report_to="wandb"
+    )
+    log_config = {**configuration.to_dict(),**training_args.to_dict()}
+    wandb.login()
+    wandb.init(project="rna-selftrain", 
+                config = log_config)
+else:
+    training_args = TrainingArguments(
+        output_dir="./bert",
+        overwrite_output_dir=True,
+        num_train_epochs=10,
+        do_train=True,
+        per_device_train_batch_size=32,
+        save_steps=500,
+        save_total_limit=2
+    )
 
-log_config = {**configuration.to_dict(),**training_args.to_dict()}
-wandb.init(project="rna-selftrain", 
-            config = log_config)
+
 data_collator = rna_model.BertCollater(RNA_ALPHABET,False,False,mut_alphabet=RNA)
 trainer = Trainer(model = model,
                  args = training_args, 
