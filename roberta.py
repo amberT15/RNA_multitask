@@ -10,8 +10,8 @@ import wandb
 torch.manual_seed(0)
 RNA='ACGTN'
 RNA_ALPHABET = SPECIALS+RNA
-seq_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5',RNA,SPECIALS)
-train_data,valid_data = random_split(seq_data,[int(len(seq_data)*0.9),int(len(seq_data)*0.1)+1])
+train_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','train',RNA,SPECIALS)
+valid_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','valid',RNA,SPECIALS)
 
 # Initializing a RoBERTa configuration
 # Initializing a RoBERTa configuration

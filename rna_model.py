@@ -72,7 +72,6 @@ class BertCollater(SimpleCollater):
         #return{'input_ids':src,'labels':tgt,'attention_mask':mask}
         return{'input_ids':src,'labels':tgt}
 
-
 class mt_splice_data(Dataset):
     def __init__(self,h5_path,dataset):
         self.set = dataset
@@ -106,8 +105,8 @@ class h5dataset(Dataset):
         return (inputs, targets)
 
 class rna_self_mask(Dataset):
-    def __init__(self,h5_path,ALPHABET,SPECIAL):
-        self.h5_file = h5py.File(h5_path, "r")['seq']
+    def __init__(self,h5_path,dataset,ALPHABET,SPECIAL):
+        self.h5_file = h5py.File(h5_path, "r")[dataset]
 
     def __len__(self):
         return len(self.h5_file)
@@ -118,26 +117,6 @@ class rna_self_mask(Dataset):
         #return (inputs, targets,attention_mask)
         list_seq = [seq.decode("utf-8")]
         return list_seq
-
-class bert_data(Dataset):
-    def __init__(self,h5_path,ALPHABET,SPECIAL):
-        self.collater = sequence_models.MLMCollater(ALPHABET+SPECIAL,False,False,mut_alphabet=ALPHABET)
-        self.h5_file = h5py.File(h5_path, "r")['seq']
-
-    def __len__(self):
-        return len(self.h5_file)
-
-    def __getitem__(self,index):
-        seq = self.h5_file[index]
-        list_seq = [[seq.decode("utf-8")]]
-        inputs,targets,attention_mask = self.collater(list_seq)
-        mask = (attention_mask==0)
-        targets[mask] = -100
-        #dimension adjust
-        inputs = np.squeeze(inputs)
-        targets = np.squeeze(targets)
-
-        return {'input_ids': inputs, 'labels': targets}
 
 class ByteNetLM(pl.LightningModule):
 
