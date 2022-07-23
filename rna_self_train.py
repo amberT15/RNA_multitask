@@ -44,7 +44,7 @@ checkpoint_callback = ModelCheckpoint(save_top_k=1,
 lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 earlystop = EarlyStopping(monitor="val_loss",
                             mode="min",patience=3)
-trainer = pl.Trainer(gpus=1,detect_anomaly=True,max_epochs=100,logger = wandb_logger,
+trainer = pl.Trainer(gpus=4,detect_anomaly=True,max_epochs=100,logger = wandb_logger,
                     callbacks=[checkpoint_callback,earlystop,lr_monitor])
 
 trainer.fit(model=model,train_dataloaders=train_loader,val_dataloaders = valid_loader)
