@@ -13,8 +13,8 @@ import rna_model
 
 RNA='ACGTN'
 RNA_ALPHABET = RNA+SPECIALS
-seq_data = rna_model.rna_self_mask('./data/pre-train/rna_seq.h5',RNA,SPECIALS)
-train_data,valid_data = random_split(seq_data,[int(len(seq_data)*0.9),int(len(seq_data)*0.1)+1])
+train_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','train',RNA,SPECIALS)
+valid_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','valid',RNA,SPECIALS)
 collater = MLMCollater(RNA_ALPHABET,True,False,mut_alphabet=RNA)
 train_loader = DataLoader(train_data,num_workers=4,collate_fn = collater,batch_size = 128)
 valid_loader = DataLoader(valid_data,num_workers=4,collate_fn = collater,batch_size = 128)
