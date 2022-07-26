@@ -1,3 +1,4 @@
+from posixpath import split
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -7,7 +8,8 @@ import numpy as np
 import h5py
 import random
 import torchmetrics
-import sequence_models
+import os
+from transformers import PreTrainedTokenizer
 from sequence_models.convolutional import ByteNet
 from sequence_models.layers import PositionFeedForward
 from sequence_models.losses import MaskedCrossEntropyLoss
@@ -105,7 +107,7 @@ class h5dataset(Dataset):
         return (inputs, targets)
 
 class rna_self_mask(Dataset):
-    def __init__(self,h5_path,dataset,ALPHABET,SPECIAL):
+    def __init__(self,h5_path,dataset):
         self.h5_file = h5py.File(h5_path, "r")[dataset]
 
     def __len__(self):
@@ -113,10 +115,27 @@ class rna_self_mask(Dataset):
 
     def __getitem__(self,index):
         seq = self.h5_file[index]
-        #inputs,targets,attention_mask = self.collater(seq)
-        #return (inputs, targets,attention_mask)
         list_seq = [seq.decode("utf-8")]
         return list_seq
+
+class rna_kmer(Dataset):
+    def __init__(self,h5_path,dataset,kmer,tokenizer,max_length=512):
+        self.h5_file = h5py.File(h5_path, "r")[dataset]
+        self.kmer = kmer
+        self.tokenizer = tokenizer
+        self.maxl = max_length
+
+    def __len__(self):
+        return len(self.h5_file)
+
+    def __getitem__(self,index):
+        seq = self.h5_file[index]
+        list_seq = seq.decode("utf-8")
+        split_seq = ' '.join(list_seq[i:i+self.kmer] for i in range(0, len(list_seq)-self.kmer+1, 1))
+        token_seq = self.tokenizer.encode(split_seq, 
+                                        add_special_tokens=True, 
+                                        max_length=self.maxl)
+        return np.squeeze(token_seq)
 
 class ByteNetLM(pl.LightningModule):
 
