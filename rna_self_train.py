@@ -16,8 +16,8 @@ RNA_ALPHABET = RNA+SPECIALS
 train_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','train',RNA,SPECIALS)
 valid_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','valid',RNA,SPECIALS)
 collater = MLMCollater(RNA_ALPHABET,True,False,mut_alphabet=RNA)
-train_loader = DataLoader(train_data,num_workers=4,collate_fn = collater,batch_size = 128)
-valid_loader = DataLoader(valid_data,num_workers=4,collate_fn = collater,batch_size = 128)
+train_loader = DataLoader(train_data, num_workers=4,collate_fn = collater,batch_size = 128)
+valid_loader = DataLoader(valid_data, num_workers=4,collate_fn = collater,batch_size = 128)
 
 #Set hyperparameters for model building
 config={'model':'ByteNetLM',
@@ -44,7 +44,7 @@ checkpoint_callback = ModelCheckpoint(save_top_k=1,
 lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
 earlystop = EarlyStopping(monitor="val_loss",
                             mode="min",patience=3)
-trainer = pl.Trainer(gpus=4,detect_anomaly=True,max_epochs=100,logger = wandb_logger,
+trainer = pl.Trainer(gpus=1,detect_anomaly=True,max_epochs=100,logger = wandb_logger,
                     callbacks=[checkpoint_callback,earlystop,lr_monitor])
 
 trainer.fit(model=model,train_dataloaders=train_loader,val_dataloaders = valid_loader)
