@@ -13,6 +13,7 @@ import rna_model
 import importlib
 import numpy as np
 import torch
+import utils
 from transformers import RobertaConfig, RobertaForMaskedLM
 from transformers import Trainer, TrainingArguments
 
@@ -51,23 +52,22 @@ args = utils.parse_args()
 
 if args.local_rank == 0:
     training_args = TrainingArguments(
-        output_dir="./bert",
+        output_dir="./6mer-roberta",
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
         per_device_train_batch_size=32,
         save_steps=500,
         save_total_limit=2,
-        ddp_find_unused_parameters = False
-        ,report_to="wandb"
+        ddp_find_unused_parameters = False,
+        report_to="wandb"
     )
     log_config = {**configuration.to_dict(),**training_args.to_dict()}
-    #wandb.login()
-    wandb.init(project="rna-selftrain", 
+    run = wandb.init(entity='ambert',project="rna-selftrain",
                 config = log_config)
 else:
     training_args = TrainingArguments(
-        output_dir="./bert",
+        output_dir="./6mer-roberta",
         overwrite_output_dir=True,
         num_train_epochs=10,
         do_train=True,
