@@ -16,6 +16,7 @@ from sequence_models.losses import MaskedCrossEntropyLoss
 from sequence_models.collaters import  SimpleCollater,_pad
 from sequence_models.constants import PAD,ALL_AAS,MASK,START,STOP
 
+
 class BertCollater(SimpleCollater):
     """Collater for masked language sequence models.
 
