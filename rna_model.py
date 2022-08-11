@@ -109,7 +109,7 @@ class h5dataset(Dataset):
 
 class rna_self_mask(Dataset):
     def __init__(self,h5_path,dataset):
-        self.h5_file = h5py.File(h5_path, "r")[dataset]
+        self.h5_file = h5py.File(h5_path, "r")[dataset][()]
 
     def __len__(self):
         return len(self.h5_file)
@@ -170,7 +170,7 @@ class ByteNetLM(pl.LightningModule):
         x, y, mask = batch
         y_hat = self(x)
         loss =self.loss_func(y_hat, y, mask)
-        self.log("train_loss", loss,on_step = False, on_epoch = True)
+        self.log("train_loss", loss,on_step = False, on_epoch = True, sync_dist=True)
         
         return loss
 
@@ -178,7 +178,7 @@ class ByteNetLM(pl.LightningModule):
         x, y, mask = batch
         y_hat = self(x)
         loss =self.loss_func(y_hat, y, mask)
-        self.log("val_loss", loss,on_step = False, on_epoch = True)
+        self.log("val_loss", loss,on_step = False, on_epoch = True, sync_dist=True)
         
         return loss
     def configure_optimizers(self):
