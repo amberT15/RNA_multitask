@@ -1852,6 +1852,19 @@ class BasicTokenizer(object):
                 output.append(char)
         return "".join(output)
 
+class arg():
+    def __init__(self,prb):
+        self.mlm_probability = prb
+
+class rnabert_maskwrapper():
+    def __init__(self,tokenizer,prob_arg) -> None:
+        self.tokenizer = tokenizer
+        self.prb = prob_arg
+    def __call__(self, batch_entry):
+        batch_entry = torch.from_numpy(np.array(batch_entry))
+        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb))
+        return{'input_ids':input,'labels':label}
+
 
 
 def _is_whitespace(char):

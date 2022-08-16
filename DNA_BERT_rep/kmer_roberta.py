@@ -5,13 +5,10 @@ sys.path.append('../')
 sys.path.append('./')
 #sys.path.append('/home/amber/multitask_RNA/replications/DNABERT/examples/')
 
-from dnabert_datastruct import mask_tokens
-from dnabert_datastruct import DNATokenizer
+from dnabert_datastruct import rnabert_maskwrapper,DNATokenizer
 
 import rna_model
 import importlib
-import numpy as np
-import torch
 import utils
 from transformers import RobertaConfig, RobertaForMaskedLM
 from transformers import Trainer, TrainingArguments
@@ -20,20 +17,6 @@ import os
 #os.environ['WANDB_PROJECT'] = 'rna-selftrain'
 os.environ['WANDB_LOG_MODEL'] = 'true'
 
-class arg():
-    def __init__(self,prb):
-        self.mlm_probability = prb
-
-class rnabert_maskwrapper():
-    def __init__(self,tokenizer,prob_arg) -> None:
-        self.tokenizer = tokenizer
-        self.prb = prob_arg
-    def __call__(self, batch_entry):
-        batch_entry = torch.from_numpy(np.array(batch_entry))
-        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb))
-        return{'input_ids':input,'labels':label}
-
-importlib.reload(rna_model)
 tokenizer = DNATokenizer.from_pretrained('dna6')
 train_data = rna_model.rna_kmer('../data/pre-train/510/rna_seq.h5','train',6,tokenizer)
 valid_data = rna_model.rna_kmer('../data/pre-train/510/rna_seq.h5','valid',6,tokenizer)
