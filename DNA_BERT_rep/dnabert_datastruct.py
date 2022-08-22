@@ -1156,10 +1156,11 @@ class dnaberttoken(object):
 
         # encoder_attention_mask requires 1 for real token, 0 for padding, just invert value
         if return_attention_masks:
-            if is_tf_available():
-                batch_outputs["attention_mask"] = tf.abs(batch_outputs["attention_mask"] - 1)
-            else:
+            if is_torch_available():
                 batch_outputs["attention_mask"] = torch.abs(batch_outputs["attention_mask"] - 1)
+            else:
+                batch_outputs["attention_mask"] = tf.abs(batch_outputs["attention_mask"] - 1)
+                
 
         return batch_outputs
 
@@ -1864,8 +1865,6 @@ class rnabert_maskwrapper():
         batch_entry = torch.from_numpy(np.array(batch_entry))
         input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb))
         return{'input_ids':input,'labels':label}
-
-
 
 def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
