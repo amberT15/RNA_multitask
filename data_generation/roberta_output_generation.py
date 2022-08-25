@@ -5,15 +5,12 @@ from transformers import RobertaForMaskedLM
 from tqdm import tqdm
 import sys
 
-start = sys.argv[1]
-end = sys.argv[2]
+model = RobertaForMaskedLM.from_pretrained('../multitask_RNA/DNA_BERT_rep/small-roberta-lr8/checkpoint-23500/')
+file = h5py.File('../multitask_RNA/data/splice_ai/roberta/roberta_input_test.h5','r')
 
-model = RobertaForMaskedLM.from_pretrained('/home/amber/multitask_RNA/DNA_BERT_rep/small-roberta-lr8/checkpoint-23500/')
-file = h5py.File('/home/amber/multitask_RNA/data/splice_ai/roberta/roberta_input.h5','r')
-
-roberta_output = h5py.File('/home/amber/multitask_RNA/data/splice_ai/roberta/roberat_output_'+str(start)+'_'+str(end)+'.h5','w')
-
-for i in range(int(start),int(end)):
+roberta_output = h5py.File('../multitask_RNA/data/splice_ai/roberta/roberta_output_test.h5','w')
+dataset_count = int(len(file.keys())/2)
+for i in range(0,dataset_count):
     input_set = file['X'+str(i)]
     seq_cache = []
     for seq_i in tqdm(range(0,len(input_set),11)):
