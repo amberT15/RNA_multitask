@@ -20,7 +20,8 @@ assert int(sys.argv[1]) in [80, 400, 2000, 10000]
 ###############################################################################
 
 L = 32
-N_GPUS = 1
+strategy = tf.distribute.MirroredStrategy()
+N_GPUS = strategy.num_replicas_in_sync
 
 if int(sys.argv[1]) == 80:
     W = np.asarray([11, 11, 11, 11],dtype=np.int)
@@ -51,11 +52,12 @@ CL = 2 * np.sum(AR*(W-1))
 assert CL <= CL_max and CL == int(sys.argv[1])
 print ("\033[1mContext nucleotides: %d\033[0m" % (CL))
 print ("\033[1mSequence length (output): %d\033[0m" % (SL))
-
-model = SpliceAI(L, W, AR)
-model.summary()
-model_m = make_parallel(model, N_GPUS)
-model_m.compile(loss=categorical_crossentropy_2d, optimizer='adam')
+with strategy.scope():  
+    model_m = SpliceAI(L, W, AR)
+    model_m.summary()
+    # model_m = make_parallel(model, N_GPUS)
+    # model_m.compile(loss=categorical_crossentropy_2d, optimizer='adam')
+    model_m.compile(loss=categorical_crossentropy_2d,optimizer='adam')
 
 ###############################################################################
 # Training and validation
@@ -169,7 +171,7 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("--------------------------------------------------------------")
 
-        model.save('./Models/SpliceAI' + sys.argv[1]
+        model_m.save('./Models/SpliceAI' + sys.argv[1]
                    + '_c' + sys.argv[2] + '.h5')
 
         if (epoch_num+1) >= 6*len(idx_train):
