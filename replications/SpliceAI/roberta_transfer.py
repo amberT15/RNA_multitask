@@ -8,7 +8,6 @@ from spliceai import *
 from utils import *
 from constants import * 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['TF_GPU_ALLOCATOR'] ='cuda_malloc_async'
 
 ###############################################################################
@@ -33,8 +32,8 @@ with strategy.scope():
     model_m = RobertaAI(L, W, AR)
     model_m.compile(loss=categorical_crossentropy_2d,optimizer='adam')
 
-input_f = h5py.File('/home/amber/multitask_RNA/data/splice_ai/roberta/roberta_output.h5','r')
-target_f = h5py.File('/home/amber/multitask_RNA/data/splice_ai/400/dataset_train_all.h5','r')
+input_f = h5py.File('../../data/splice_ai/roberta/roberta_output.h5','r')
+target_f = h5py.File('../../data/splice_ai/400/dataset_train_all.h5','r')
 
 num_idx = len(target_f.keys())//2
 idx_all = np.random.permutation(num_idx)
@@ -48,9 +47,9 @@ start_time = time.time()
 
 for epoch_num in range(EPOCH_NUM):
 
-    #idx = np.random.choice(idx_train)
-    idx = idx_train[epoch_num % (len(idx_train))]
-    #print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
+    idx = np.random.choice(idx_train)
+    #idx = idx_train[epoch_num % (len(idx_train))]
+    print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
     X = input_f['X' + str(idx)]
     Y = target_f['Y' + str(idx)]
     model_m.fit(X, Y[0], batch_size=BATCH_SIZE, verbose=0,shuffle=False)
@@ -95,7 +94,7 @@ for epoch_num in range(EPOCH_NUM):
                 os.execv(sys.executable, ['python'] + [sys.argv[0]])
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            _, =print_topl_statistics(np.asarray(Y_true_2[t]),
+            _ =print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("\n\033[1mTraining set metrics:\033[0m")
@@ -126,12 +125,12 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            _,=print_topl_statistics(np.asarray(Y_true_1[t]),
+            _=print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            _,=print_topl_statistics(np.asarray(Y_true_2[t]),
+            _ =print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))
