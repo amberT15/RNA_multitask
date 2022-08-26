@@ -50,10 +50,10 @@ for epoch_num in range(EPOCH_NUM):
 
     #idx = np.random.choice(idx_train)
     idx = idx_train[epoch_num % (len(idx_train))]
-    print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
+    #print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
     X = input_f['X' + str(idx)]
     Y = target_f['Y' + str(idx)]
-    model_m.fit(X, Y[0], batch_size=BATCH_SIZE, verbose=1,shuffle=False)
+    model_m.fit(X, Y[0], batch_size=BATCH_SIZE, verbose=0,shuffle=False)
 
 
     if (epoch_num+1) % len(idx_train) == 0:
@@ -88,12 +88,14 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            test_aupr = print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
-
+            if test_aupr <= 0.001:
+                print ("\n\033[1mFailed initilization. Re-starting training.\033[0m")
+                os.execv(sys.executable, ['python'] + [sys.argv[0]])
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            _, =print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("\n\033[1mTraining set metrics:\033[0m")
@@ -124,12 +126,12 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            _,=print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            _,=print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))
@@ -138,7 +140,7 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("--------------------------------------------------------------")
 
-        model.save('./Models/RobertaAI_c400.h5')
+        model_m.save('./Models/RobertaAI_c400.h5')
 
         if (epoch_num+1) >= 6*len(idx_train):
             kb.set_value(model_m.optimizer.lr,
