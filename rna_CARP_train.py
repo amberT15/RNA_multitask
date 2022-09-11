@@ -2,8 +2,6 @@ import torch
 import wandb
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import random_split
-from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 from sequence_models.collaters import  MLMCollater
@@ -39,19 +37,17 @@ def main():
                                 config['n_layers'], config['kernel_size'], config['r'], config['lr'],
                                 padding_idx=config['padding_idx'], causal=False, dropout=config['dropout'])
 
-        wandb_logger = WandbLogger(project="rna-selftrain",config=config,log_model=True)
-        # checkpoint_callback = ModelCheckpoint(save_top_k=1,
-        #                                         monitor="val_loss",
-        #                                         mode="min",
-        #                                         dirpath=wandb.run.dir,
-        #                                         filename="best_model")
+        wandb_logger = WandbLogger(project="rna-selftrain",config=config,log_model="all")
+        checkpoint_callback = ModelCheckpoint(save_top_k=1,
+                                                monitor="val_loss", 
+                                                mode="min")
         lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
         earlystop = EarlyStopping(monitor="val_loss",
-                                mode="min",patience=3)
+                                mode="min",patience=7)
         trainer = pl.Trainer(gpus=[0,1,2,3],detect_anomaly=True,max_epochs=100,
                         strategy="ddp",
                         logger = wandb_logger,
-                        callbacks=[#checkpoint_callback,
+                        callbacks=[checkpoint_callback,
                         earlystop,lr_monitor])
 
         trainer.fit(model=model,train_dataloaders=train_loader,val_dataloaders = valid_loader)

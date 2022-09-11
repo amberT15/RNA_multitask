@@ -186,11 +186,11 @@ class ByteNetLM(pl.LightningModule):
         self.reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
                                                                      mode = 'min',
                                                                      factor = 0.2,
-                                                                    patience = 3,
+                                                                    patience = 5,
                                                                     min_lr = 1e-7,
                                                                     verbose = True)
-        schedulers =  {'scheduler':self.reduce_lr,'monitor':"val_loss",}
-        return [self.opt],schedulers
+        schedulers =  {'optimizer':self.opt,'lr_scheduler':self.reduce_lr,'monitor':"val_loss",}
+        return schedulers
 
 class binary_models(pl.LightningModule):
     def __init__(self):
