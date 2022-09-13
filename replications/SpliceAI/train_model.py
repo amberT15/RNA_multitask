@@ -6,18 +6,20 @@ import numpy as np
 import sys
 import time
 import h5py
+import wandb
+import os
 import keras.backend as kb
 import tensorflow as tf
 from spliceai import *
 from utils import *
-from multi_gpu import *
 from constants import * 
 
 assert int(sys.argv[1]) in [80, 400, 2000, 10000]
 data_ratio = float(sys.argv[2])
 model_save_path = str(sys.argv[3])
+
 wandb.init(entity='ambert',project="spliceai_downsample",
-        config={'model':'Roberta','ratio':data_ratio})
+        config={'model':'SpliceAI','ratio':data_ratio})
 ###############################################################################
 # Model
 ###############################################################################
@@ -57,7 +59,7 @@ print ("\033[1mContext nucleotides: %d\033[0m" % (CL))
 print ("\033[1mSequence length (output): %d\033[0m" % (SL))
 with strategy.scope():  
     model_m = SpliceAI(L, W, AR)
-    model_m.summary()
+    #model_m.summary()
     # model_m = make_parallel(model, N_GPUS)
     # model_m.compile(loss=categorical_crossentropy_2d, optimizer='adam')
     model_m.compile(loss=categorical_crossentropy_2d,optimizer='adam')
@@ -123,14 +125,18 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            top_k,test_aupr = print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
+            if test_aupr <= 0.001:
+                wandb.finish(exit_code=1)
+                print ("\n\033[1mFailed initilization. Re-starting training.\033[0m")
+                os.execv(sys.executable, ['python'] + [sys.argv[0]] + [sys.argv[1]] + [sys.argv[2]] + [sys.argv[3]])
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            d1,d2 = print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
-
+            wandb.log({"donor_top_k":d1,"donor_aupr":d2})
         print ("\n\033[1mTraining set metrics:\033[0m")
 
         Y_true_1 = [[] for t in range(1)]
@@ -160,12 +166,12 @@ for epoch_num in range(EPOCH_NUM):
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            d1,d2=print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            d1,d2=print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))

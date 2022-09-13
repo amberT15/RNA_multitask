@@ -9,7 +9,6 @@ from spliceai import *
 from utils import *
 from constants import * 
 import os
-os.environ['TF_GPU_ALLOCATOR'] ='cuda_malloc_async'
 
 data_ratio = float(sys.argv[1])
 model_save_path = str(sys.argv[2])
@@ -27,7 +26,7 @@ N_GPUS = strategy.num_replicas_in_sync
 
 W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11],dtype=np.int)
 AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4],dtype=np.int)
-BATCH_SIZE = 16*N_GPUS
+BATCH_SIZE = 18*N_GPUS
 
 CL = 2 * np.sum(AR*(W-1))
 assert CL <= CL_max and CL == int(400)
@@ -55,8 +54,7 @@ start_time = time.time()
 for epoch_num in range(EPOCH_NUM):
 
     idx = np.random.choice(idx_train)
-    #idx = idx_train[epoch_num % (len(idx_train))]
-    print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
+
     X = input_f['X' + str(idx)]
     Y = target_f['Y' + str(idx)]
     model_m.fit(X, Y[0], batch_size=BATCH_SIZE, verbose=0,shuffle=False)
