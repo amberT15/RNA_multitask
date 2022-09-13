@@ -1,23 +1,22 @@
-###############################################################################
-# This file contains the code to train the SpliceAI model.
-###############################################################################
-
 import numpy as np
 import sys
 import time
 import h5py
+import wandb
 import keras.backend as kb
 import tensorflow as tf
 from spliceai import *
 from utils import *
-from multi_gpu import *
 from constants import * 
+import os
+os.environ['TF_GPU_ALLOCATOR'] ='cuda_malloc_async'
 
-assert int(sys.argv[1]) in [80, 400, 2000, 10000]
-data_ratio = float(sys.argv[2])
-model_save_path = str(sys.argv[3])
+data_ratio = float(sys.argv[1])
+model_save_path = str(sys.argv[2])
+
 wandb.init(entity='ambert',project="spliceai_downsample",
         config={'model':'Roberta','ratio':data_ratio})
+
 ###############################################################################
 # Model
 ###############################################################################
@@ -26,50 +25,24 @@ L = 32
 strategy = tf.distribute.MirroredStrategy()
 N_GPUS = strategy.num_replicas_in_sync
 
-if int(sys.argv[1]) == 80:
-    W = np.asarray([11, 11, 11, 11],dtype=np.int)
-    AR = np.asarray([1, 1, 1, 1],dtype=np.int)
-    BATCH_SIZE = 18*N_GPUS
-elif int(sys.argv[1]) == 400:
-    W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11],dtype=np.int)
-    AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4],dtype=np.int)
-    BATCH_SIZE = 18*N_GPUS
-elif int(sys.argv[1]) == 2000:
-    W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                    21, 21, 21, 21],dtype=np.int)
-    AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                     10, 10, 10, 10],dtype=np.int)
-    BATCH_SIZE = 12*N_GPUS
-elif int(sys.argv[1]) == 10000:
-    W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                    21, 21, 21, 21, 41, 41, 41, 41],dtype=np.int)
-    AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                     10, 10, 10, 10, 25, 25, 25, 25],dtype=np.int)
-    BATCH_SIZE = 6*N_GPUS
-# Hyper-parameters:
-# L: Number of convolution kernels
-# W: Convolution window size in each residual unit
-# AR: Atrous rate in each residual unit
+W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11],dtype=np.int)
+AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4],dtype=np.int)
+BATCH_SIZE = 16*N_GPUS
 
 CL = 2 * np.sum(AR*(W-1))
-assert CL <= CL_max and CL == int(sys.argv[1])
+assert CL <= CL_max and CL == int(400)
 print ("\033[1mContext nucleotides: %d\033[0m" % (CL))
 print ("\033[1mSequence length (output): %d\033[0m" % (SL))
+print ("\033[1mBatch size and GPU usage: %d * %d\033[0m" % (BATCH_SIZE/N_GPUS,N_GPUS))
+
 with strategy.scope():  
-    model_m = SpliceAI(L, W, AR)
-    model_m.summary()
-    # model_m = make_parallel(model, N_GPUS)
-    # model_m.compile(loss=categorical_crossentropy_2d, optimizer='adam')
+    model_m = RobertaAI(L, W, AR)
     model_m.compile(loss=categorical_crossentropy_2d,optimizer='adam')
 
-###############################################################################
-# Training and validation
-###############################################################################
+input_f = h5py.File('../../data/splice_ai/roberta/roberta_output.h5','r')
+target_f = h5py.File('../../data/splice_ai/400/dataset_train_all.h5','r')
 
-h5f = h5py.File(data_dir + 'dataset' + '_' + 'train'
-                + '_' + 'all' + '.h5', 'r')
-
-num_idx = len(h5f.keys())//2
+num_idx = len(target_f.keys())//2
 idx_all = np.random.permutation(num_idx)
 idx_train = idx_all[:int(0.9*data_ratio*num_idx)]
 idx_valid = idx_all[int(0.9*num_idx):]
@@ -82,12 +55,11 @@ start_time = time.time()
 for epoch_num in range(EPOCH_NUM):
 
     idx = np.random.choice(idx_train)
-
-    X = h5f['X' + str(idx)][:]
-    Y = h5f['Y' + str(idx)][:]
-
-    Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS) 
-    model_m.fit(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+    #idx = idx_train[epoch_num % (len(idx_train))]
+    print('------------------Epoch %d (X%d)-----------------------'%(epoch_num,idx))
+    X = input_f['X' + str(idx)]
+    Y = target_f['Y' + str(idx)]
+    model_m.fit(X, Y[0], batch_size=BATCH_SIZE, verbose=0,shuffle=False)
 
 
     if (epoch_num+1) % len(idx_train) == 0:
@@ -103,34 +75,41 @@ for epoch_num in range(EPOCH_NUM):
 
         for idx in idx_valid:
 
-            X = h5f['X' + str(idx)][:]
-            Y = h5f['Y' + str(idx)][:]
+            X = input_f['X' + str(idx)]
+            Y = target_f['Y' + str(idx)]
 
-            Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
-            Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
+            Yp = model_m.predict(X, batch_size=BATCH_SIZE)
 
             if not isinstance(Yp, list):
                 Yp = [Yp]
 
             for t in range(1):
 
-                is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
+                is_expr = (Y[t].sum(axis=(1,2)) >= 1)
 
-                Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
-                Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
+                Y_true_1[t].extend(Y[t][is_expr, :, 1].flatten())
+                Y_true_2[t].extend(Y[t][is_expr, :, 2].flatten())
                 Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
                 Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            top_k,test_aupr = print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
+            if test_aupr <= 0.001:
+                wandb.finish(exit_code=1)
+                print ("\n\033[1mFailed initilization. Re-starting training.\033[0m")
+                os.execv(sys.executable, ['python'] + [sys.argv[0]] + [sys.argv[1]] + [sys.argv[2]])
+
+            wandb.log({"acceptor_top_k":top_k,"acceptor_aupr":test_aupr})
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            d1,d2 =print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
+            wandb.log({"donor_top_k":d1,"donor_aupr":d2})
+            
         print ("\n\033[1mTraining set metrics:\033[0m")
 
         Y_true_1 = [[] for t in range(1)]
@@ -140,32 +119,31 @@ for epoch_num in range(EPOCH_NUM):
 
         for idx in idx_train[:len(idx_valid)]:
 
-            X = h5f['X' + str(idx)][:]
-            Y = h5f['Y' + str(idx)][:]
+            X = input_f['X' + str(idx)]
+            Y = target_f['Y' + str(idx)]
 
-            Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
-            Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
+            Yp = model_m.predict(X, batch_size=BATCH_SIZE)
 
             if not isinstance(Yp, list):
                 Yp = [Yp]
 
             for t in range(1):
 
-                is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
+                is_expr = (Y[t].sum(axis=(1,2)) >= 1)
 
-                Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
-                Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
+                Y_true_1[t].extend(Y[t][is_expr, :, 1].flatten())
+                Y_true_2[t].extend(Y[t][is_expr, :, 2].flatten())
                 Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
                 Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
 
         print ("\n\033[1mAcceptor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_1[t]),
+            d1,d2=print_topl_statistics(np.asarray(Y_true_1[t]),
                                   np.asarray(Y_pred_1[t]))
 
         print ("\n\033[1mDonor:\033[0m")
         for t in range(1):
-            print_topl_statistics(np.asarray(Y_true_2[t]),
+            d1,d2 =print_topl_statistics(np.asarray(Y_true_2[t]),
                                   np.asarray(Y_pred_2[t]))
 
         print ("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))
@@ -181,7 +159,7 @@ for epoch_num in range(EPOCH_NUM):
                          0.5*kb.get_value(model_m.optimizer.lr))
             # Learning rate decay
 
-h5f.close()
+input_f.close()
+target_f.close()
         
 ###############################################################################
-
