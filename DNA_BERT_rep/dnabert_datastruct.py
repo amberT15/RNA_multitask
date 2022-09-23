@@ -99,7 +99,6 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         new_centers = list(new_centers)
         masked_indices[i][new_centers] = True
     
-
     labels[~masked_indices] = -100  # We only compute loss on masked tokens
 
     # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
