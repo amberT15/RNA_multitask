@@ -25,6 +25,7 @@ import torch
 from typing import Tuple
 from file_utils import cached_path, hf_bucket_url, is_remote_url, is_tf_available, is_torch_available
 from copy import deepcopy
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,9 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         new_centers = list(new_centers)
         masked_indices[i][new_centers] = True
     
-    labels[~masked_indices] = -100  # We only compute loss on masked tokens
+    #labels[~masked_indices] = -100  # We only compute loss on masked tokens
+    #only compute loss on center masked index
+    labels[~masks] = -100
 
     # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
     indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
