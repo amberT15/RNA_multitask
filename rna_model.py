@@ -151,7 +151,7 @@ class rna_long_kmer(Dataset):
     def __getitem__(self,index):
         seq = self.h5_file[index]
         list_seq = seq.decode("utf-8")
-        split_seq = ' '.join(list_seq[i*self.kmer :(i+1)*self.kmer] for i in range(0, len(list_seq)/self.kmer))
+        split_seq = ' '.join(list_seq[i*self.kmer :(i+1)*self.kmer] for i in range(0, int(len(list_seq)/self.kmer)))
         token_seq = self.tokenizer.encode(split_seq, 
                                         add_special_tokens=True, 
                                         max_length=self.maxl)
