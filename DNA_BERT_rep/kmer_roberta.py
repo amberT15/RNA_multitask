@@ -40,6 +40,8 @@ args = utils.parse_args()
 
 if args.local_rank == 0:
     training_args = TrainingArguments(
+        output_dir = 'wandb/no_context_lr_10',
+        run_name = 'no_context_lr_10',
         num_train_epochs=30,
         do_train=True,
         learning_rate = 1e-03,
@@ -63,7 +65,10 @@ if args.local_rank == 0:
     run = wandb.init(entity='ambert',project="rna_MLM",
                 config = log_config)
 else:
+    print(wandb.run)
     training_args = TrainingArguments(
+        output_dir = 'wandb/no_context_lr_10',
+        run_name = 'no_context_lr_10',
         num_train_epochs=30,
         do_train=True,
         learning_rate = 1e-03,
