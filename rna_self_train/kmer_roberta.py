@@ -1,25 +1,17 @@
-import transformers
-import sys
 import wandb
-sys.path.append('../')
-sys.path.append('./')
-#sys.path.append('/home/amber/multitask_RNA/replications/DNABERT/examples/')
-
-from dnabert_datastruct import rnabert_maskwrapper,DNATokenizer
-
 import rna_model
-import importlib
 import utils
 from transformers import RobertaConfig, RobertaForMaskedLM
 from transformers import Trainer, TrainingArguments
+from dna_tokenizer import rnabert_maskwrapper,DNATokenizer
 
 import os
 os.environ['WANDB_PROJECT'] = 'rna_MLM'
 os.environ['WANDB_LOG_MODEL'] = 'true'
 decay_rate = 0.15
 
-tokenizer = DNATokenizer.from_pretrained('dna6')
-data_dir = './data/pre-train/510_6/rna_seq.h5'
+tokenizer = DNATokenizer('vocab.txt')
+data_dir = '../data/pre-train/510_6/rna_seq.h5'
 train_data = rna_model.rna_long_kmer(data_dir,'train',6,tokenizer)
 valid_data = rna_model.rna_long_kmer(data_dir,'valid',6,tokenizer)
 data_collator = rnabert_maskwrapper(tokenizer,decay_rate)
@@ -52,8 +44,8 @@ if args.local_rank == 0:
         warmup_steps = 500,
         lr_scheduler_type = 'linear',
         evaluation_strategy = 'steps',
-        gradient_accumulation_steps = 40,
-        per_device_train_batch_size=32,
+        gradient_accumulation_steps = 80,
+        per_device_train_batch_size=16,
         logging_steps = 80,
         eval_steps = 500,
         save_total_limit=2,
@@ -65,7 +57,6 @@ if args.local_rank == 0:
     run = wandb.init(entity='ambert',project="rna_MLM",
                 config = log_config)
 else:
-    print(wandb.run)
     training_args = TrainingArguments(
         output_dir = 'wandb/no_context_lr_10',
         run_name = 'no_context_lr_10',
@@ -79,8 +70,8 @@ else:
         warmup_steps = 500,
         lr_scheduler_type = 'linear',
         evaluation_strategy = 'steps',
-        gradient_accumulation_steps = 40,
-        per_device_train_batch_size=32,
+        gradient_accumulation_steps = 80,
+        per_device_train_batch_size=16,
         logging_steps = 50,
         eval_steps = 500,
         save_total_limit=2,

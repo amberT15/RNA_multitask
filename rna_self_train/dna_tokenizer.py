@@ -7,27 +7,22 @@ import logging
 import itertools
 import re
 import torch
-
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
-PRETRAINED_VOCAB_FILES_MAP = {"vocab_file": {"dna3": "https://raw.githubusercontent.com/jerryji1993/DNABERT/master/src/transformers/dnabert-config/bert-config-3/vocab.txt",
-                                             "dna4": "https://raw.githubusercontent.com/jerryji1993/DNABERT/master/src/transformers/dnabert-config/bert-config-4/vocab.txt",
-                                             "dna5": "https://raw.githubusercontent.com/jerryji1993/DNABERT/master/src/transformers/dnabert-config/bert-config-5/vocab.txt",
-                                             "dna6": "https://raw.githubusercontent.com/jerryji1993/DNABERT/master/src/transformers/dnabert-config/bert-config-6/vocab.txt"}}
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-                                          "dna3": 512,
-                                          "dna4": 512,
-                                          "dna5": 512,
-                                          "dna6": 512}
-PRETRAINED_INIT_CONFIGURATION = {
-    "dna3": {"do_lower_case": False},
-    "dna4": {"do_lower_case": False},
-    "dna5": {"do_lower_case": False},
-    "dna6": {"do_lower_case": False}}
+import numpy as np
+from typing import Tuple
+from copy import deepcopy
+    
 VOCAB_KMER = {
     "69": "3",
     "261": "4",
     "1029": "5",
     "4101": "6",}
+
+MASK_LIST = {
+    "3": [-1, 1],
+    "4": [-1, 1, 2],
+    "5": [-2, -1, 1, 2],
+    "6": [-2, -1, 1, 2, 3]
+}
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +38,6 @@ def load_vocab(vocab_file):
 
 class DNATokenizer(PreTrainedTokenizer):
 
-    vocab_files_names = VOCAB_FILES_NAMES
-    pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
-    max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
     model_input_names = ["input_ids", "attention_mask"]
 
     def __init__(
@@ -700,6 +692,7 @@ class DNATokenizer(PreTrainedTokenizer):
             return super().get_special_tokens_mask(
                 token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=True
             )
+            ##return list(map(lambda x: 1 if x in [self.sep_token_id, self.cls_token_id] else 0, token_ids_0))
         if token_ids_1 is not None:
             return [1] + ([0] * len(token_ids_0)) + [1, 1] + ([0] * len(token_ids_1)) + [1]
         return [1] + ([0] * len(token_ids_0)) + [1]
@@ -850,4 +843,114 @@ class DNATokenizer(PreTrainedTokenizer):
             if cat.startswith("C"):
                 return True
             return False
-        
+
+def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, torch.Tensor]:
+    """ Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original. """
+    
+    mask_list = MASK_LIST[tokenizer.kmer]
+
+    if tokenizer.mask_token is None:
+        raise ValueError(
+            "This tokenizer does not have a mask token which is necessary for masked language modeling. Remove the --mlm flag if you want to use this tokenizer."
+        )
+
+    labels = inputs.clone()
+    print(inputs[39])
+    # We sample a few tokens in each sequence for masked-LM training (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
+    probability_matrix = torch.full(labels.shape, args.mlm_probability)
+    special_tokens_mask = [
+        tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in labels.tolist()
+    ]
+    probability_matrix.masked_fill_(torch.tensor(special_tokens_mask, dtype=torch.bool), value=0.0)
+    if tokenizer._pad_token is not None:
+        padding_mask = labels.eq(tokenizer.pad_token_id)
+        probability_matrix.masked_fill_(padding_mask, value=0.0)
+
+    masked_indices = torch.bernoulli(probability_matrix).bool()
+
+    # change masked indices
+    masks = deepcopy(masked_indices)
+    for i, masked_index in enumerate(masks):
+        end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
+        mask_centers = set(torch.where(masked_index==1)[0].tolist())
+        new_centers = deepcopy(mask_centers)
+        for center in mask_centers:
+            for mask_number in mask_list:
+                current_index = center + mask_number
+                if current_index <= end and current_index >= 1:
+                    new_centers.add(current_index)
+        new_centers = list(new_centers)
+        masked_indices[i][new_centers] = True
+    
+    #only mask center index with our expansion
+    masked_indices = masks
+    labels[~masked_indices] = -100  # We only compute loss on masked tokens
+
+    # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
+    indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
+    inputs[indices_replaced] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
+
+    # 10% of the time, we replace masked input tokens with random word
+    indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
+    random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
+    inputs[indices_random] = random_words[indices_random]
+
+    # The rest of the time (10% of the time) we keep the masked input tokens unchanged
+    return inputs, labels
+
+class rnabert_maskwrapper():
+    def __init__(self,tokenizer,prob_arg) -> None:
+        self.tokenizer = tokenizer
+        self.prb = prob_arg
+    def __call__(self, batch_entry):
+        batch_entry = torch.from_numpy(np.array(batch_entry))
+        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb))
+        return{'input_ids':input,'labels':label}
+
+class arg():
+    def __init__(self,prb):
+        self.mlm_probability = prb
+
+def _is_whitespace(char):
+    """Checks whether `chars` is a whitespace character."""
+    # \t, \n, and \r are technically contorl characters but we treat them
+    # as whitespace since they are generally considered as such.
+    if char == " " or char == "\t" or char == "\n" or char == "\r":
+        return True
+    cat = unicodedata.category(char)
+    if cat == "Zs":
+        return True
+    return False
+
+def _is_control(char):
+    """Checks whether `chars` is a control character."""
+    # These are technically control characters but we count them as whitespace
+    # characters.
+    if char == "\t" or char == "\n" or char == "\r":
+        return False
+    cat = unicodedata.category(char)
+    if cat.startswith("C"):
+        return True
+    return False
+
+def _is_punctuation(char):
+    """Checks whether `chars` is a punctuation character."""
+    cp = ord(char)
+    # We treat all non-letter/number ASCII as punctuation.
+    # Characters such as "^", "$", and "`" are not in the Unicode
+    # Punctuation class but we treat them as punctuation anyways, for
+    # consistency.
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
+        return True
+    cat = unicodedata.category(char)
+    if cat.startswith("P"):
+        return True
+    return False
+
+def whitespace_tokenize(text):
+    """Runs basic whitespace cleaning and splitting on a piece of text."""
+    text = text.strip()
+    if not text:
+        return []
+    tokens = text.split()
+    return tokens
