@@ -855,7 +855,6 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         )
 
     labels = inputs.clone()
-    print(inputs[39])
     # We sample a few tokens in each sequence for masked-LM training (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
     probability_matrix = torch.full(labels.shape, args.mlm_probability)
     special_tokens_mask = [
@@ -871,7 +870,11 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
     # change masked indices
     masks = deepcopy(masked_indices)
     for i, masked_index in enumerate(masks):
-        end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
+        try:
+            end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
+        except:
+            print(lables[i])
+
         mask_centers = set(torch.where(masked_index==1)[0].tolist())
         new_centers = deepcopy(mask_centers)
         for center in mask_centers:
