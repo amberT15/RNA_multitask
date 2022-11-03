@@ -873,7 +873,7 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         try:
             end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
         except:
-            print(lables[i])
+            raise
 
         mask_centers = set(torch.where(masked_index==1)[0].tolist())
         new_centers = deepcopy(mask_centers)
