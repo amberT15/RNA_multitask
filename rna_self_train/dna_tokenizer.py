@@ -844,7 +844,7 @@ class DNATokenizer(PreTrainedTokenizer):
                 return True
             return False
 
-def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, torch.Tensor]:
+def mask_tokens(inputs: torch.Tensor, tokenizer, args, extend):
     """ Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original. """
     
     mask_list = MASK_LIST[tokenizer.kmer]
@@ -873,7 +873,8 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         try:
             end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
         except:
-            print(lables[i])
+            print(labels[i])
+            raise ValueError("probability matrix all zero")
 
         mask_centers = set(torch.where(masked_index==1)[0].tolist())
         new_centers = deepcopy(mask_centers)
@@ -885,8 +886,10 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
         new_centers = list(new_centers)
         masked_indices[i][new_centers] = True
     
-    #only mask center index with our expansion
-    masked_indices = masks
+    if extend == False:
+        #only mask center index with our expansion
+        masked_indices = masks
+
     labels[~masked_indices] = -100  # We only compute loss on masked tokens
 
     # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
@@ -902,12 +905,13 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args) -> Tuple[torch.Tensor, to
     return inputs, labels
 
 class rnabert_maskwrapper():
-    def __init__(self,tokenizer,prob_arg) -> None:
+    def __init__(self,tokenizer,prob_arg,extend=False) -> None:
         self.tokenizer = tokenizer
         self.prb = prob_arg
+        self.extend = extend
     def __call__(self, batch_entry):
         batch_entry = torch.from_numpy(np.array(batch_entry))
-        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb))
+        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb),self.extend)
         return{'input_ids':input,'labels':label}
 
 class arg():
