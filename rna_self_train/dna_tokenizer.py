@@ -873,12 +873,8 @@ def mask_tokens(inputs: torch.Tensor, tokenizer, args, extend):
         try:
             end = torch.where(probability_matrix[i]!=0)[0].tolist()[-1]
         except:
-<<<<<<< HEAD
             print(labels[i])
             raise ValueError("probability matrix all zero")
-=======
-            raise
->>>>>>> 49658f873ed7f9395a6a020f236d75a5bfc4945f
 
         mask_centers = set(torch.where(masked_index==1)[0].tolist())
         new_centers = deepcopy(mask_centers)
