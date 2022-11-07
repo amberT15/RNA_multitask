@@ -1,0 +1,65 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Job stats:
+job                    count    min threads    max threads
+-------------------  -------  -------------  -------------
+all                        1              1              1
+make_test_dataset          1              1              1
+make_train_dataset         1              1              1
+split_Ath_intervals        1              1              1
+total                      4              1              1
+
+Select jobs to execute...
+
+[Thu Nov  3 15:20:35 2022]
+rule split_Ath_intervals:
+    input: /home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz
+    jobid: 3
+    reason: Code has changed since last execution
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:20:36 2022]
+Finished job 3.
+1 of 4 steps (25%) done
+Select jobs to execute...
+
+[Thu Nov  3 15:20:36 2022]
+rule make_test_dataset:
+    input: /home/amber/multitask_RNA/data/gpn/genome/hg38.test.fa.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet
+    jobid: 5
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet; Input files updated by another job: /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz
+    wildcards: species=hg38.test, window_size=512, step_size=256
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:20:36 2022]
+rule make_train_dataset:
+    input: /home/amber/multitask_RNA/data/gpn/genome/hg38.train.fa.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet
+    jobid: 1
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet; Input files updated by another job: /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz
+    wildcards: species=hg38.train
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:21:36 2022]
+Finished job 1.
+2 of 4 steps (50%) done
+[Thu Nov  3 15:22:04 2022]
+Finished job 5.
+3 of 4 steps (75%) done
+Select jobs to execute...
+
+[Thu Nov  3 15:22:04 2022]
+localrule all:
+    input: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet, /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet
+    jobid: 0
+    reason: Input files updated by another job: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet, /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:22:04 2022]
+Finished job 0.
+4 of 4 steps (100%) done
+Complete log: .snakemake/log/2022-11-03T152034.093460.snakemake.log
