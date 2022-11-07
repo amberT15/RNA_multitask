@@ -1,0 +1,127 @@
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO, bgzf
+import gzip
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import re
+from tqdm import tqdm
+tqdm.pandas()
+
+
+species_train = ["hg38.train"]
+species_test = ["hg38.test"]
+
+
+split_chromosomes = {
+    "train": list(map(str,[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13,
+              14, 15, 16, 17, 18, 19, 20, 21, 22])),
+    "test": ['8'],
+}
+splits = split_chromosomes.keys()
+
+
+MIN_CONTIG_LEN = 512
+
+
+rule all:
+    input:
+        expand("/home/amber/multitask_RNA/data/gpn/train/{species}.parquet", species=species_train),
+        expand("/home/amber/multitask_RNA/data/gpn/test/{species}.512.256.parquet", species=species_test),
+
+
+# rule download_reference:
+#     output:
+#         "genome/Arabidopsis_thaliana.fa.gz",
+#     shell:
+#         "wget {FASTA_URL} -O {output}"
+
+
+# only defined nucleotides (ACGTacgt)
+rule find_good_intervals:
+    input:
+        "/home/amber/ref/hg38/{species}.fa.gz",
+    output:
+        "/home/amber/multitask_RNA/data/gpn/intervals/{species}.tsv.gz",
+    shell:
+        "python find_intervals_defined.py {input} {output} {MIN_CONTIG_LEN}"
+
+
+rule split_Ath_intervals:
+    input:
+        "/home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz",
+    output:
+        expand("/home/amber/multitask_RNA/data/gpn/intervals/hg38.{split}.tsv.gz", split=splits),
+    run:
+        intervals = pd.read_csv(input[0], sep="\t")
+        for split, path in zip(splits, output):
+            intervals[intervals.chrom.str[3:].isin(split_chromosomes[split])].to_csv(path, sep="\t", index=False)
+
+    
+rule copy_Ath_genome:
+    input:
+        "/home/amber/ref/hg38/hg38.fa.gz",
+    output:
+        "/home/amber/multitask_RNA/data/gpn/genome/hg38.{split}.fa.gz",
+    shell:
+        "cp {input} {output}"
+
+
+rule make_train_dataset:
+    input:
+        "/home/amber/multitask_RNA/data/gpn/genome/{species}.fa.gz",
+        "/home/amber/multitask_RNA/data/gpn/intervals/{species}.tsv.gz",
+    output:
+        "/home/amber/multitask_RNA/data/gpn/train/{species}.parquet",
+    run:
+        with gzip.open(input[0], "rt") as handle:
+            genome = SeqIO.to_dict(SeqIO.parse(handle, "fasta"))
+        df = pd.read_csv(input[1], sep="\t")
+        df.chrom = df.chrom.astype(str)
+        df["species"] = wildcards["species"]
+        print(df)
+        df["seq"] = df.apply(lambda row: str(genome[row.chrom][row.start:row.end].seq), axis=1)
+        print(df)
+        df.to_parquet(output[0], index=False)
+
+
+rule make_test_dataset:
+    input:
+        "/home/amber/multitask_RNA/data/gpn/genome/{species}.fa.gz",
+        "/home/amber/multitask_RNA/data/gpn/intervals/{species}.tsv.gz",
+    output:
+        "/home/amber/multitask_RNA/data/gpn/test/{species}.{window_size}.{step_size}.parquet",
+    run:
+        with gzip.open(input[0], "rt") as handle:
+            genome = SeqIO.to_dict(SeqIO.parse(handle, "fasta"))
+        contigs = pd.read_csv(input[1], sep="\t")
+        contigs.chrom = contigs.chrom.astype(str)
+
+        window_size = int(wildcards["window_size"])
+        step_size = int(wildcards["step_size"])
+
+        def get_contig_windows(contig):
+            windows = pd.DataFrame(dict(start=np.arange(contig.start, contig.end-window_size, step_size)))
+            windows["end"] = windows.start + window_size
+            windows["chrom"] = contig.chrom
+            windows["strand"] = "+"
+            windows_neg = windows.copy()
+            windows_neg.strand = "-"
+            windows = pd.concat([windows, windows_neg], ignore_index=True)
+            return windows
+
+        windows = pd.concat(contigs.apply(get_contig_windows, axis=1).values, ignore_index=True)
+        print(windows)
+
+        def get_window_seq(window):
+            seq = genome[window.chrom][window.start:window.end].seq
+            if window.strand == "-":
+                seq = seq.reverse_complement()
+            return str(seq)
+
+        windows["seq"] = windows.progress_apply(get_window_seq, axis=1)
+        windows = windows.sample(frac=1.0, random_state=42)
+        print(windows)
+        windows.to_parquet(output[0])

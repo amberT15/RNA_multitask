@@ -1,0 +1,7 @@
+Building DAG of jobs...
+MissingInputException in rule make_train_dataset in line 72 of /home/amber/multitask_RNA/data_generation/gpn/Snakefile:
+Missing input files for rule make_train_dataset:
+    output: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet
+    wildcards: species=hg38.train
+    affected files:
+        /home/amber/ref/hg38/hg38.train.fa.gz

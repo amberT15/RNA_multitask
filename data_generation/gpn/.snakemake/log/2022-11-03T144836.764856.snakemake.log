@@ -1,0 +1,91 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Job stats:
+job                    count    min threads    max threads
+-------------------  -------  -------------  -------------
+all                        1              1              1
+copy_Ath_genome            2              1              1
+find_good_intervals        1              1              1
+make_test_dataset          1              1              1
+make_train_dataset         1              1              1
+split_Ath_intervals        1              1              1
+total                      7              1              1
+
+Select jobs to execute...
+
+[Thu Nov  3 14:48:38 2022]
+rule find_good_intervals:
+    input: /home/amber/ref/hg38/hg38.fa.gz
+    output: /home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz
+    jobid: 4
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz
+    wildcards: species=hg38
+    resources: tmpdir=/tmp
+
+
+[Thu Nov  3 14:48:38 2022]
+rule copy_Ath_genome:
+    input: /home/amber/ref/hg38/hg38.fa.gz
+    output: /home/amber/multitask_RNA/data/gpn/genome/hg38.test.fa.gz
+    jobid: 6
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/genome/hg38.test.fa.gz
+    wildcards: split=test
+    resources: tmpdir=/tmp
+
+
+[Thu Nov  3 14:48:38 2022]
+rule copy_Ath_genome:
+    input: /home/amber/ref/hg38/hg38.fa.gz
+    output: /home/amber/multitask_RNA/data/gpn/genome/hg38.train.fa.gz
+    jobid: 2
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/genome/hg38.train.fa.gz
+    wildcards: split=train
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 14:48:38 2022]
+Finished job 6.
+1 of 7 steps (14%) done
+[Thu Nov  3 14:48:38 2022]
+Finished job 2.
+2 of 7 steps (29%) done
+[Thu Nov  3 15:01:08 2022]
+Finished job 4.
+3 of 7 steps (43%) done
+Select jobs to execute...
+
+[Thu Nov  3 15:01:08 2022]
+rule split_Ath_intervals:
+    input: /home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz
+    jobid: 3
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz; Input files updated by another job: /home/amber/multitask_RNA/data/gpn/intervals/hg38.tsv.gz
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:01:10 2022]
+Finished job 3.
+4 of 7 steps (57%) done
+Select jobs to execute...
+
+[Thu Nov  3 15:01:10 2022]
+rule make_test_dataset:
+    input: /home/amber/multitask_RNA/data/gpn/genome/hg38.test.fa.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet
+    jobid: 5
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/test/hg38.test.512.256.parquet; Input files updated by another job: /home/amber/multitask_RNA/data/gpn/intervals/hg38.test.tsv.gz, /home/amber/multitask_RNA/data/gpn/genome/hg38.test.fa.gz
+    wildcards: species=hg38.test, window_size=512, step_size=256
+    resources: tmpdir=/tmp
+
+[Thu Nov  3 15:01:10 2022]
+rule make_train_dataset:
+    input: /home/amber/multitask_RNA/data/gpn/genome/hg38.train.fa.gz, /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz
+    output: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet
+    jobid: 1
+    reason: Missing output files: /home/amber/multitask_RNA/data/gpn/train/hg38.train.parquet; Input files updated by another job: /home/amber/multitask_RNA/data/gpn/intervals/hg38.train.tsv.gz, /home/amber/multitask_RNA/data/gpn/genome/hg38.train.fa.gz
+    wildcards: species=hg38.train
+    resources: tmpdir=/tmp
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2022-11-03T144836.764856.snakemake.log
