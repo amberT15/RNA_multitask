@@ -12,8 +12,8 @@ import rna_model
 def main():
         RNA='ACGTN'
         RNA_ALPHABET = RNA+SPECIALS
-        train_data = rna_model.rna_self_mask('../data/pre-train/510/rna_seq.h5','train')
-        valid_data = rna_model.rna_self_mask('../data/pre-train/510/rna_seq.h5','valid')
+        train_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','train')
+        valid_data = rna_model.rna_self_mask('./data/pre-train/510/rna_seq.h5','valid')
         collater = MLMCollater(RNA_ALPHABET,True,False,mut_alphabet=RNA)
         train_loader = DataLoader(train_data, num_workers=4,collate_fn = collater,batch_size = 512)
         valid_loader = DataLoader(valid_data, num_workers=4,collate_fn = collater,batch_size = 512)
@@ -46,8 +46,8 @@ def main():
         lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
         earlystop = EarlyStopping(monitor="val_loss",
                                 mode="min",patience=7)
-        trainer = pl.Trainer(gpus=[0],detect_anomaly=True,max_epochs=100,
-                        #strategy="ddp",
+        trainer = pl.Trainer(gpus=[0,1,2,3],detect_anomaly=True,max_epochs=100,
+                        strategy="ddp",
                         logger = wandb_logger,
                         callbacks=[checkpoint_callback,
                         earlystop,lr_monitor])
