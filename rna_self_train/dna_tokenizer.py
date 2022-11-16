@@ -753,7 +753,7 @@ class DNATokenizer(PreTrainedTokenizer):
         sep = [self.sep_token_id]
         cls = [self.cls_token_id]
         if token_ids_1 is None:
-            if len(token_ids_0) < 510:
+            if len(token_ids_0) <= 510:
                 return len(cls + token_ids_0 + sep) * [0]
             else:
                 num_pieces = int(len(token_ids_0)//510) + 1
