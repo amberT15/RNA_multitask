@@ -914,6 +914,17 @@ class rnabert_maskwrapper():
         input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb),self.extend)
         return{'input_ids':input,'labels':label}
 
+class carp_maskwrapper():
+    def __init__(self,tokenizer,prob_arg,extend=False) -> None:
+        self.tokenizer = tokenizer
+        self.prb = prob_arg
+        self.extend = extend
+    def __call__(self, batch_entry):
+        batch_entry = torch.from_numpy(np.array(batch_entry))
+        input,label = mask_tokens(batch_entry,self.tokenizer,arg(self.prb),self.extend)
+        mask = torch.from_numpy(np.array(label!=-100))
+        return input,label,mask
+
 class arg():
     def __init__(self,prb):
         self.mlm_probability = prb
