@@ -16,15 +16,15 @@ tokenizer = DNATokenizer('./rna_self_train/vocab.txt')
 if runtype == 'context':
     decay_rate=0.05
     data_dir = './data/pre-train/510/rna_seq.h5'
-    train_data = rna_model.rna_kmer(data_dir,'train',6,tokenizer)
-    valid_data = rna_model.rna_kmer(data_dir,'valid',6,tokenizer)
+    train_data = rna_model.rna_context(data_dir,'train',6,tokenizer)
+    valid_data = rna_model.rna_context(data_dir,'valid',6,tokenizer)
     data_collator = rnabert_maskwrapper(tokenizer,decay_rate,extend = True)
 
 elif runtype == '6mer':
     decay_rate = 0.15
     data_dir = './data/pre-train/510_6/rna_seq.h5'
-    train_data = rna_model.rna_long_kmer(data_dir,'train',6,tokenizer)
-    valid_data = rna_model.rna_long_kmer(data_dir,'valid',6,tokenizer)
+    train_data = rna_model.rna_kmer(data_dir,'train',6,tokenizer)
+    valid_data = rna_model.rna_kmer(data_dir,'valid',6,tokenizer)
     data_collator = rnabert_maskwrapper(tokenizer,decay_rate,extend = False)
 
 run_name = runtype+'_dr'+str(decay_rate)+'_bert_v0'

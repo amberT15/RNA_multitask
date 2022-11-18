@@ -119,7 +119,7 @@ class rna_self_mask(Dataset):
         list_seq = [seq.decode("utf-8")]
         return list_seq
 
-class rna_kmer(Dataset):
+class rna_context(Dataset):
     def __init__(self,h5_path,dataset,kmer,tokenizer,max_length=512):
         self.h5_file = h5py.File(h5_path, "r")[dataset]
         self.kmer = kmer
@@ -138,7 +138,7 @@ class rna_kmer(Dataset):
                                         max_length=self.maxl)
         return np.squeeze(token_seq)
 
-class rna_long_kmer(Dataset):
+class rna_kmer(Dataset):
     def __init__(self,h5_path,dataset,kmer,tokenizer,max_length=512):
         self.h5_file = h5py.File(h5_path, "r")[dataset]
         self.kmer = kmer
