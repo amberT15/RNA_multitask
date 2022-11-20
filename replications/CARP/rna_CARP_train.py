@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import WandbLogger
 from sequence_models.constants import SPECIALS
 import carp_models
 sys.path.append('../../rna_self_train/')
-from dna_tokenizer import DNATokenizer,rnabert_maskwrapper
+from dna_tokenizer import DNATokenizer,carp_maskwrapper
 import rna_model
 
 def main():
