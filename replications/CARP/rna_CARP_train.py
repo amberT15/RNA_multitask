@@ -7,8 +7,8 @@ from sequence_models.collaters import  MLMCollater
 from pytorch_lightning.loggers import WandbLogger
 from sequence_models.constants import SPECIALS
 import carp_models
-sys.path.append('/home/amber/multitask_RNA/rna_self_train/')
-from dna_tokenizer import DNATokenizer,carp_maskwrapper
+sys.path.append('../../rna_self_train/')
+from dna_tokenizer import DNATokenizer,rnabert_maskwrapper
 import rna_model
 
 def main():
@@ -18,26 +18,26 @@ def main():
                 RNA_ALPHABET = RNA+SPECIALS
                 len_vocab = len(RNA_ALPHABET)
                 padding_idx = RNA_ALPHABET.index('-')
-                train_data = carp_models.rna_self_mask('/home/amber/multitask_RNA/data/pre-train/context/rna_seq.h5','train')
-                valid_data = carp_models.rna_self_mask('/home/amber/multitask_RNA/data/pre-train/context/rna_seq.h5','valid')
+                train_data = carp_models.rna_self_mask('../../data/pre-train/context/rna_seq.h5','train')
+                valid_data = carp_models.rna_self_mask('/home/amber/multitaks_RNA/data/pre-train/context/rna_seq.h5','valid')
                 collater = MLMCollater(RNA_ALPHABET,True,False,mut_alphabet=RNA)
 
         elif vocab == 'kmer':
-                tokenizer = DNATokenizer('/home/amber/multitask_RNA/rna_self_train/vocab.txt')
+                tokenizer = DNATokenizer('../../rna_self_train/vocab.txt')
                 decay_rate = 0.15
                 len_vocab = 4101
                 padding_idx = tokenizer.pad_token_id
-                data_dir = '/home/amber/multitask_RNA/data/pre-train/6mer/rna_seq.h5'
+                data_dir = '../../data/pre-train/6mer/rna_seq.h5'
                 train_data = rna_model.rna_kmer(data_dir,'train',6,tokenizer)
                 valid_data = rna_model.rna_kmer(data_dir,'valid',6,tokenizer)
                 collater = carp_maskwrapper(tokenizer,decay_rate,extend = False)
 
         elif vocab == 'context':
-                tokenizer = DNATokenizer('/home/amber/multitask_RNA/rna_self_train/vocab.txt')
+                tokenizer = DNATokenizer('../../rna_self_train/vocab.txt')
                 decay_rate=0.05
                 len_vocab = 4101
                 padding_idx = tokenizer.pad_token_id
-                data_dir = '/home/amber/multitask_RNA/data/pre-train/context/rna_seq.h5'
+                data_dir = '../../data/pre-train/context/rna_seq.h5'
                 train_data = rna_model.rna_context(data_dir,'train',6,tokenizer)
                 valid_data = rna_model.rna_context(data_dir,'valid',6,tokenizer)
                 collater = carp_maskwrapper(tokenizer,decay_rate,extend = True)
