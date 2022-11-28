@@ -19,7 +19,7 @@ def main():
                 len_vocab = len(RNA_ALPHABET)
                 padding_idx = RNA_ALPHABET.index('-')
                 train_data = carp_models.rna_self_mask('../../data/pre-train/context/rna_seq.h5','train')
-                valid_data = carp_models.rna_self_mask('/home/amber/multitaks_RNA/data/pre-train/context/rna_seq.h5','valid')
+                valid_data = carp_models.rna_self_mask('../../data/pre-train/context/rna_seq.h5','valid')
                 collater = MLMCollater(RNA_ALPHABET,True,False,mut_alphabet=RNA)
 
         elif vocab == 'kmer':
@@ -62,10 +62,12 @@ def main():
                 'r' : 128, # used to calculate dilation factor
                 'padding_idx' : padding_idx ,# location of padding token in ordered alphabet
                 'dropout' : 0.1 ,
+                'vocab' : vocab
                 }
 
         model = carp_models.ByteNetLM(config['n_tokens'], config['d_embedding'], config['d_model'],
-                                config['n_layers'], config['kernel_size'], config['r'], config['lr'],
+                                config['n_layers'], config['kernel_size'], 
+                                config['r'], config['lr'],activation=config['activation'],
                                 padding_idx=config['padding_idx'], final_ln=True, dropout=config['dropout'])
 
         wandb_logger = WandbLogger(project="carp-rna",config=config,log_model=True)
@@ -75,7 +77,7 @@ def main():
         lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
         earlystop = EarlyStopping(monitor="val_loss",
                                 mode="min",patience=7)
-        trainer = pl.Trainer(gpus=[0,1],detect_anomaly=True,max_epochs=100,
+        trainer = pl.Trainer(gpus=[0,1,2,3],detect_anomaly=True,max_epochs=100,
                         strategy="ddp",
                         logger = wandb_logger,
                         callbacks=[checkpoint_callback,
