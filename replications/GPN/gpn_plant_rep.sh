@@ -1,10 +1,10 @@
-WANDB_PROJECT=PlantBERT_MLM_512 python ./run_mlm_custom.py \
+WANDB_PROJECT=Plant_MLM_512 python ./run_mlm_custom.py \
     --report_to wandb \
     --run_name ConvNet_only_athaliana \
     --do_train \
     --do_eval \
-    --train_fasta_path /home/amber/multitask_RNA/data/GPN_plant/dataset/train/Arabidopsis_thaliana.train.parquet \
-    --validation_file /home/amber/multitask_RNA/data/GPN_plant/dataset/test/Arabidopsis_thaliana.test.512.256.parquet \
+    --train_fasta_path /grid/koo/home/ztang/multitask_RNA/data/gpn/plant/train/Arabidopsis_thaliana.train.parquet \
+    --validation_file /grid/koo/home/ztang/multitask_RNA/data/gpn/plant/test/Arabidopsis_thaliana.test.512.256.parquet \
     --model_type ConvNet \
     --config_overrides vocab_size=6 \
     --line_by_line True \
@@ -19,8 +19,8 @@ WANDB_PROJECT=PlantBERT_MLM_512 python ./run_mlm_custom.py \
     --preprocessing_num_workers 8 \
     --warmup_steps 10000 \
     --logging_steps 100000 \
-    --output_dir results_512_convnet_only_athaliana \
-    --tokenizer_name ../../data/mlm/tokenizer_bare \
+    --output_dir GPN_TAIR10 \
+    --tokenizer_name gonzalobenegas/gpn-arabidopsis \
     --per_device_train_batch_size 250 \
     --per_device_eval_batch_size 250 \
     --gradient_accumulation_steps 1 \
@@ -31,5 +31,5 @@ WANDB_PROJECT=PlantBERT_MLM_512 python ./run_mlm_custom.py \
     --seed 49 \
     --prediction_loss_only True \
     --lr_scheduler_type constant_with_warmup \
-    --resume_from_checkpoint ./results_512_convnet_only_athaliana/checkpoint-1300000 \
-    --ignore_data_skip \
+    # --resume_from_checkpoint ./results_512_convnet_only_athaliana/checkpoint-1300000 \
+    # --ignore_data_skip \
