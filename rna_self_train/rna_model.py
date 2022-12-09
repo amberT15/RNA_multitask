@@ -108,16 +108,21 @@ class h5dataset(Dataset):
         return (inputs, targets)
 
 class rna_self_mask(Dataset):
-    def __init__(self,h5_path,dataset):
+    def __init__(self,h5_path,dataset,tokenizer,max_length):
         self.h5_file = h5py.File(h5_path, "r")[dataset][()]
+        self.tokenizer = tokenizer
+        self.maxl = max_length
 
     def __len__(self):
         return len(self.h5_file)
 
     def __getitem__(self,index):
         seq = self.h5_file[index]
-        list_seq = [seq.decode("utf-8")]
-        return list_seq
+        list_seq = seq.decode("utf-8")
+        token_seq = self.tokenizer.encode([*list_seq], 
+                                        add_special_tokens=True, 
+                                        max_length=self.maxl)
+        return np.squeeze(token_seq)
 
 class rna_context(Dataset):
     def __init__(self,h5_path,dataset,kmer,tokenizer,max_length=512):

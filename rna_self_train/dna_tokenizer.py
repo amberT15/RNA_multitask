@@ -12,12 +12,14 @@ from typing import Tuple
 from copy import deepcopy
     
 VOCAB_KMER = {
+    "9":"1",
     "69": "3",
     "261": "4",
     "1029": "5",
     "4101": "6",}
 
 MASK_LIST = {
+    "1":[],
     "3": [-1, 1],
     "4": [-1, 1, 2],
     "5": [-2, -1, 1, 2],
