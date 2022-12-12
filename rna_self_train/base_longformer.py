@@ -10,24 +10,26 @@ os.environ['WANDB_PROJECT'] = 'rna_MLM'
 os.environ['WANDB_LOG_MODEL'] = 'true'
 
 decay_rate = 0.15
-tokenizer = DNATokenizer('./vocab/base_vocab.txt',max_len=3062)
-data_dir = '../data/pre-train/6mer/rna_seq.h5'
-train_data = rna_model.rna_self_mask(data_dir,'train',tokenizer,max_length=3062)
-valid_data = rna_model.rna_self_mask(data_dir,'valid',tokenizer,max_length=3062)
+tokenizer = DNATokenizer('./vocab/base_vocab.txt',max_len=3072)
+data_dir = '../data/pre-train/3070/rna_seq.h5'
+train_data = rna_model.rna_self_mask(data_dir,'train',tokenizer,max_length=3072)
+valid_data = rna_model.rna_self_mask(data_dir,'valid',tokenizer,max_length=3072)
 data_collator = rnabert_maskwrapper(tokenizer,decay_rate,extend = False)
 
 run_name = 'base_longformer_v0'
-configuration = LongformerConfig(vocab_size = tokenizer.vocab_size,
+configuration = LongformerConfig(attention_window = 512,
+                                vocab_size = tokenizer.vocab_size,
                                 pad_token_id = tokenizer.pad_token_id,
                                 eos_token_id = tokenizer.sep_token_id,
                                 bos_token_id = tokenizer.cls_token_id,
                                 type_vocab_size = 1,
                                 layer_norm_eps = 1e-05,
-                                max_position_embeddings = 3062
+                                max_position_embeddings = 3074
                                 )
 
 model = LongformerForMaskedLM(configuration)
 args = utils.parse_args()
+print(args.local_rank)
 if args.local_rank == 0:
     training_args = TrainingArguments(
         output_dir = './wandb/'+run_name,
@@ -43,7 +45,7 @@ if args.local_rank == 0:
         lr_scheduler_type = 'linear',
         evaluation_strategy = 'steps',
         gradient_accumulation_steps = 40,
-        per_device_train_batch_size=32,
+        per_device_train_batch_size=4,
         logging_steps = 80,
         eval_steps = 500,
         save_total_limit=2,
@@ -61,8 +63,6 @@ if args.local_rank == 0:
                 eval_dataset=valid_data,
                 data_collator=data_collator)
 
-    wandb.config.update({'decay_rate':decay_rate,'dataset':data_dir})   
-
 else:
     training_args = TrainingArguments(
         output_dir = './wandb/'+run_name,
@@ -78,7 +78,7 @@ else:
         lr_scheduler_type = 'linear',
         evaluation_strategy = 'steps',
         gradient_accumulation_steps = 40,
-        per_device_train_batch_size=32,
+        per_device_train_batch_size=4,
         logging_steps = 80,
         eval_steps = 500,
         save_total_limit=2,
