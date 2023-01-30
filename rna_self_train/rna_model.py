@@ -177,14 +177,16 @@ class conv_former(pl.LightningModule):
         self.opt = torch.optim.AdamW(self.parameters(),lr=self.lr)
         self.reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
                                                                      mode = 'min',
-                                                                     factor = 0.2,
-                                                                    patience = 5,
+                                                                     factor = 0.5,
+                                                                    patience = 5000,
                                                                     min_lr = 1e-7,
                                                                     verbose = True)
-        schedulers =  {'scheduler':self.reduce_lr,'monitor':"val_loss",}
+        schedulers =  {'scheduler':self.reduce_lr,'monitor':"train_loss",
+                        'interval': 'step','frequency':1}
         return [self.opt], [schedulers]
 
-    def optimizer_step(self, epoch_nb, batch_nb, optimizer, optimizer_i, opt_closure):
+    def optimizer_step(self, epoch_nb, batch_nb, optimizer, optimizer_i, optimizer_closure,
+                                on_tpu=False, using_lbfgs=False):
         # update params
         optimizer.step(closure=optimizer_closure)
 

@@ -12,8 +12,7 @@ config_dict = {
     'intermediate_size': 2048,
     'attention_dilation': [1,1,1],
     'data_dir' : '/grid/koo/home/ztang/multitask_RNA/data/pre-train/3072/rna_onehot.h5',
-    'batch_size':16
-}
+    'batch_size':8}
 
 train_data = rna_model.longformer_dataset(config_dict['data_dir'],'train')
 valid_data = rna_model.longformer_dataset(config_dict['data_dir'],'valid')
@@ -35,7 +34,7 @@ checkpoint_callback = pl.callbacks.ModelCheckpoint(dirpath=wandb_logger.save_dir
 lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='step')
 
 trainer = pl.Trainer(devices=3,accelerator='gpu',strategy='ddp',
-                     logger=wandb_logger,accumulate_grad_batches=8,
+                     logger=wandb_logger,accumulate_grad_batches=30,
                      max_epochs = 100, min_steps = 5000,
                      detect_anomaly = True,
                      callbacks = [checkpoint_callback,lr_monitor]
