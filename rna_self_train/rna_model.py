@@ -9,6 +9,7 @@ import h5py
 import random
 import torchmetrics
 import os
+import transformers
 from transformers import PreTrainedTokenizer
 from sequence_models.convolutional import ByteNet
 from sequence_models.layers import PositionFeedForward
@@ -156,10 +157,9 @@ class conv_former(pl.LightningModule):
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
-        loss[mask_idx] = 0
-        loss = loss.sum()
+        loss = loss[mask_idx].sum()
 
-        self.log("train_loss", loss,on_step = True, on_epoch = False)
+        self.log("train_loss", loss, on_epoch = False)
         return loss
 
     def validation_step(self, x, batch_idx):
@@ -167,34 +167,36 @@ class conv_former(pl.LightningModule):
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
-        loss[mask_idx] = 0
-        loss = loss.sum()
+        loss = loss[mask_idx].sum()
 
-        self.log("val_loss", loss,on_step = True, on_epoch = False)
+        self.log("val_loss", loss,on_step = False, on_epoch = True)
         return loss
 
     def configure_optimizers(self):
         self.opt = torch.optim.AdamW(self.parameters(),lr=self.lr)
-        self.reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
-                                                                     mode = 'min',
-                                                                     factor = 0.5,
-                                                                    patience = 5000,
-                                                                    min_lr = 1e-7,
-                                                                    verbose = True)
+        # self.reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
+        #                                                              mode = 'min',
+        #                                                              factor = 0.5,
+        #                                                             patience = 5000,
+        #                                                             min_lr = 1e-7,
+        #                                                             verbose = True)
+        self.reduce_lr = transformers.get_polynomial_decay_schedule_with_warmup(self.opt,
+                                                                                num_warmup_steps=5000,
+                                                                                num_training_steps=30000)
         schedulers =  {'scheduler':self.reduce_lr,'monitor':"train_loss",
                         'interval': 'step','frequency':1}
         return [self.opt], [schedulers]
 
-    def optimizer_step(self, epoch_nb, batch_nb, optimizer, optimizer_i, optimizer_closure,
-                                on_tpu=False, using_lbfgs=False):
-        # update params
-        optimizer.step(closure=optimizer_closure)
-
-        # manually warm up lr without a scheduler
-        if self.trainer.global_step < self.warmup:
-            lr_scale = min(1.0, float(self.trainer.global_step + 1) / self.warmup)
-            for pg in optimizer.param_groups:
-                pg["lr"] = lr_scale * self.lr
+    # def optimizer_step(self, epoch_nb, batch_nb, optimizer, optimizer_i, optimizer_closure,
+    #                             on_tpu=False, using_lbfgs=False):
+    #     # update params
+    #     optimizer.step(closure=optimizer_closure)
+    #
+    #     # manually warm up lr without a scheduler
+    #     if self.trainer.global_step < self.warmup:
+    #         lr_scale = min(1.0, float(self.trainer.global_step + 1) / self.warmup)
+    #         for pg in optimizer.param_groups:
+    #             pg["lr"] = lr_scale * self.lr
 
 def onehot_collator(onehot_seq,p=0.15):
     N,_,L = onehot_seq.shape
