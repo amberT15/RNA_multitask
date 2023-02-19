@@ -9,6 +9,7 @@ import h5py
 import random
 import torchmetrics
 import os
+import glob
 import transformers
 from transformers import PreTrainedTokenizer
 from sequence_models.convolutional import ByteNet
@@ -105,8 +106,10 @@ class conv_former(pl.LightningModule):
         self.block2 = dilated_residual(config.hidden_size,7,[4],0.1)
 
         #longformer attention layers
+        assert len(config['attention_window'] == len(config['attention_dilation'],'make sure attention window aand dilation rate is provided for each attention block'
+        block_num = len(config['attention_window']
         self.att_list = nn.ModuleList(
-            [longformer_block(config,i) for i in range(0,3)]
+            [longformer_block(config,i) for i in range(0,block_num)]
         )
 
         #MLM classifcation head
@@ -157,7 +160,7 @@ class conv_former(pl.LightningModule):
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
-        loss = loss[mask_idx].sum()
+        loss = loss[mask_idx].mean()
 
         self.log("train_loss", loss, on_epoch = False)
         return loss
@@ -167,7 +170,7 @@ class conv_former(pl.LightningModule):
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
-        loss = loss[mask_idx].sum()
+        loss = loss[mask_idx].mean()
 
         self.log("val_loss", loss,on_step = False, on_epoch = True)
         return loss
