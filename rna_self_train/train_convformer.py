@@ -17,7 +17,7 @@ config_dict = {
 
 train_data = rna_model.longformer_dataset(config_dict['data_dir'],'train')
 #valid_data = rna_model.longformer_dataset(config_dict['data_dir'],'valid')
-train_loader = DataLoader(train_data,num_workers=4,batch_size = config_dict['batch_size'])
+train_loader = DataLoader(train_data,num_workers=4,batch_size = config_dict['batch_size'],shuffle=True)
 #valid_loader = DataLoader(valid_data,num_workers=4,batch_size = config_dict['batch_size'])
 
 
