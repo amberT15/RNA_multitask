@@ -184,7 +184,7 @@ class conv_former(pl.LightningModule):
         #                                                             min_lr = 1e-7,
         #                                                             verbose = True)
         self.reduce_lr = transformers.get_polynomial_decay_schedule_with_warmup(self.opt,
-                                                                                num_warmup_steps=5000,
+                                                                                num_warmup_steps=self.warmup,
                                                                                 num_training_steps=30000)
         schedulers =  {'scheduler':self.reduce_lr,'monitor':"train_loss",
                         'interval': 'step','frequency':1}
