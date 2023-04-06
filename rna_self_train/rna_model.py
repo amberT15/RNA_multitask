@@ -106,7 +106,7 @@ class conv_former(pl.LightningModule):
         self.block2 = dilated_residual(config.hidden_size,7,[4],0.1)
 
         #longformer attention layers
-        assert len(config.attention_window) == len(config.attention_dilation),'make sure attention window aand dilation rate is provided for each attention block'
+        assert len(config.attention_window) == len(config.attention_dilation),'make sure attention window and dilation rate is provided for each attention block'
         block_num = len(config.attention_window)
         self.att_list = nn.ModuleList(
             [longformer_block(config,i) for i in range(0,block_num)]
@@ -205,10 +205,21 @@ def onehot_collator(onehot_seq,p=0.15):
     N,_,L = onehot_seq.shape
     out_seq = onehot_seq.clone()
     uniform_distribution = np.random.rand(N,L)
-    masked_index = np.where(uniform_distribution<0.15)
+    masked_index = np.where(uniform_distribution<p)
     out_seq[masked_index[0],:,masked_index[1]] = torch.cuda.FloatTensor([0,0,0,0])
 
     return out_seq,masked_index
+
+def onehot_kmer_collator(onehot_seq,p=0.15,kmer=6):
+    N,_,L = onehot_seq.shape
+    out_seq = onehot_seq.clone()
+    uniform_distribution = np.random.rand(N,L)
+    masked_index = np.where(uniform_distribution<p)
+    row_i = np.repeat(masked_index[0],kmer)
+    col_i =  np.repeat(masked_index[1],kmer)+np.tile(range(kmer),len(masked_index[1]))
+    out_seq[row_i,:,col_i[1]] = torch.cuda.FloatTensor([0,0,0,0])
+
+    return out_seq,(row_i,col_i),masked_index
 
 class longformer_dataset(Dataset):
     def __init__(self,h5_path,dataset):
