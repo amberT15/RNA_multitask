@@ -26,6 +26,7 @@ class conv_former_config():
                 num_attention_heads,
                 intermediate_size,
                 masking_rate = 0.15,
+                mask_size = 1,
                 attention_dilation = 1,
                 attention_probs_dropout_prob = 0,
                 attention_mode = 'sliding_chunks',
@@ -42,6 +43,7 @@ class conv_former_config():
         self.num_attention_heads = num_attention_heads
         self.intermediate_size = intermediate_size
         self.masking_rate = masking_rate
+        self.mask_size = mask_size
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
         self.attention_mode = attention_mode
         self.attention_dilation = attention_dilation
@@ -95,6 +97,7 @@ class conv_former(pl.LightningModule):
         self.lr = config.learning_rate
         self.warmup = config.warm_up_step
         self.mask = config.masking_rate
+        self.mask_size = config.mask_size
         #output parameters
         self.output_attentions = config.output_attentions
         self.output_hidden_states = config.output_hidden_states
@@ -156,7 +159,7 @@ class conv_former(pl.LightningModule):
         return output_logits
 
     def training_step(self, x, batch_idx):
-        masked_x,mask_idx = onehot_collator(x,self.mask)
+        masked_x,mask_idx = onehot_kmer_collator(x,self.mask,self.mask_size)
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
@@ -166,7 +169,7 @@ class conv_former(pl.LightningModule):
         return loss
 
     def validation_step(self, x, batch_idx):
-        masked_x,mask_idx = onehot_collator(x,self.mask)
+        masked_x,mask_idx = onehot_kmer_collator(x,self.mask,self.mask_size)
         pred_x = self(masked_x)
 
         loss =self.loss_func(pred_x, x)
@@ -189,17 +192,6 @@ class conv_former(pl.LightningModule):
         schedulers =  {'scheduler':self.reduce_lr,'monitor':"train_loss",
                         'interval': 'step','frequency':1}
         return [self.opt], [schedulers]
-
-    # def optimizer_step(self, epoch_nb, batch_nb, optimizer, optimizer_i, optimizer_closure,
-    #                             on_tpu=False, using_lbfgs=False):
-    #     # update params
-    #     optimizer.step(closure=optimizer_closure)
-    #
-    #     # manually warm up lr without a scheduler
-    #     if self.trainer.global_step < self.warmup:
-    #         lr_scale = min(1.0, float(self.trainer.global_step + 1) / self.warmup)
-    #         for pg in optimizer.param_groups:
-    #             pg["lr"] = lr_scale * self.lr
 
 def onehot_collator(onehot_seq,p=0.15):
     N,_,L = onehot_seq.shape
