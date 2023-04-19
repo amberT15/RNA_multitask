@@ -108,7 +108,7 @@ es_callback = keras.callbacks.EarlyStopping(monitor='val_loss',
 
 reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', 
                                               factor=0.2,
-                                              patience=3, 
+                                              patience=5, 
                                               min_lr=1e-7,
                                               mode='min',
                                               verbose=0) 
@@ -144,7 +144,7 @@ for data in [dataset]:
         log_train = np.log(sub_y_train[:,:1]+1)
         log_valid = np.log(y_valid[:,:1]+1)
         
-        for rep in range(0,50):
+        for rep in range(0,10):
             print('build model')
             model = model_2CNN(sub_x_train.shape[1:],1,norm=True)
             optimizer = keras.optimizers.Adam(learning_rate=lr)
@@ -155,7 +155,7 @@ for data in [dataset]:
             print('#################run ',str(i),' for ', data, '################')
             history = model.fit(sub_x_train, log_train, 
                                 epochs=200,
-                                batch_size=64,
+                                batch_size=32,
                                 verbose = 0, 
                                 shuffle=True,
                                 validation_data=(x_valid, log_valid), 
