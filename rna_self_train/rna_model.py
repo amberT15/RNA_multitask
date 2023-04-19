@@ -136,6 +136,7 @@ class conv_former(pl.LightningModule):
         #conv head
         conv = self.conv1(x)
         conv = self.batchnorm(conv)
+        conv = torch.exp(conv)
         res = self.block1(conv)
         hidden_states = self.block2(res)
         hidden_states = hidden_states.transpose(1, 2)
