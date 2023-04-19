@@ -210,9 +210,9 @@ def onehot_kmer_collator(onehot_seq,p=0.15,kmer=6):
     masked_index = np.where(uniform_distribution<p)
     row_i = np.repeat(masked_index[0],kmer)
     col_i =  np.repeat(masked_index[1],kmer)+np.tile(range(kmer),len(masked_index[1]))
-    out_seq[row_i,:,col_i[1]] = torch.cuda.FloatTensor([0,0,0,0])
+    out_seq[row_i,:,col_i] = torch.cuda.FloatTensor([0,0,0,0])
 
-    return out_seq,(row_i,col_i),masked_index
+    return out_seq,(row_i,col_i)
 
 class longformer_dataset(Dataset):
     def __init__(self,h5_path,dataset):
