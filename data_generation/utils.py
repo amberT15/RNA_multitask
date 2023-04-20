@@ -37,3 +37,11 @@ def seq_to_onehot(seq):
                 seq_code[i, :] = 0.25
 
     return seq_code
+
+def onehot_rc(seq,rc_range=None):
+    if rc_range is None:
+        rc_range = (0,seq.shape[1])
+    reverse_seq = seq[:,rc_range[0]:rc_range[1]]
+    reverse_seq = np.flip(reverse_seq,axis=0)
+    rc_seq = np.concatenate((seq[:,0:rc_range[0]],reverse_seq,seq[:,rc_range[1]:]),axis = 1)
+    return rc_seq
