@@ -121,7 +121,7 @@ class onehot_dataset(Dataset):
         targets = self.h5_file['target'][index].astype(np.float32)
         return (inputs, targets)
     
-##### MPRAnn #####
+##### tensorflow model MPRAnn #####
 def MPRAnn(input_shape, output_shape):
     inputs = tfkl.Input(shape=(input_shape[1], input_shape[2]), name="input")
     layer = tfkl.Conv1D(250, kernel_size=7, strides=1, activation='relu', name="conv1")(inputs)  # 250 7 relu
