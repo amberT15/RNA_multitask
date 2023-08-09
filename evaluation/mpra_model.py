@@ -108,7 +108,9 @@ def rep_cnn(input_shape,config={}):
     inputs = keras.Input(shape=input_shape, name='sequence')
 
     #position wise dense layer for dimension reduction
-    nn = keras.layers.Conv1D(filters=config['reduce_dim'],kernel_size=1)(inputs)
+    nn = keras.layers.BatchNormalization()(inputs)
+    nn = keras.layers.Conv1D(filters=config['reduce_dim'],kernel_size=1,
+                             kernel_initializer = initializer)(nn)
 
     #first conv block
     nn = keras.layers.Conv1D(filters=config['conv1_filter'],
@@ -118,15 +120,16 @@ def rep_cnn(input_shape,config={}):
     nn = keras.layers.BatchNormalization()(nn)
     nn = keras.layers.Activation(config['activation'], name='filter_activation')(nn)
     nn = keras.layers.Dropout(config['dropout1'])(nn)
+    nn = keras.layers.MaxPooling1D(pool_size=config['res_pool'])(nn)
 
     #residual block
-    nn = residual_block(nn, filter_size=config['res_filter'], 
-                        dilated=config['res_layers'],
-                        kernel_initializer = initializer)
-    nn = keras.layers.MaxPooling1D(pool_size=config['res_pool'])(nn)
-    nn = keras.layers.Dropout(config['res_dropout'])(nn)
+    # nn = residual_block(nn, filter_size=config['res_filter'], 
+    #                     dilated=config['res_layers'],
+    #                     kernel_initializer = initializer)
+    # nn = keras.layers.MaxPooling1D(pool_size=config['res_pool'])(nn)
+    # nn = keras.layers.Dropout(config['res_dropout'])(nn)
 
-    #second conv block
+
     nn = keras.layers.Conv1D(filters=config['conv2_filter'],
                              kernel_size=config['conv2_kernel'],
                              padding='same',
@@ -153,9 +156,94 @@ def rep_cnn(input_shape,config={}):
     model =  keras.Model(inputs=inputs, outputs=outputs)
     return model   
 
+def rep_onehot(input_shape,config={}):
+    #initializer
+    initializer = keras.initializers.RandomNormal(mean=0.0, stddev=0.005)
+
+    #input layers
+    seq_inputs = keras.Input(shape=input_shape[0], name='sequence')
+    embed_inputs = keras.Input(shape=input_shape[1], name='embedding')
+
+    #sequence input head
+    nn = keras.layers.Conv1D(filters=config['conv_seq_filter'],
+                             kernel_size=config['conv_seq_kernel'],
+                             padding='same',
+                             kernel_initializer = initializer)(seq_inputs)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation(config['seq_activation'], name='filter_activation')(nn)
+    nn = keras.layers.Dropout(config['seq_dropout'])(nn)   
+    nn = residual_block(nn, filter_size=config['res_filters'], 
+                        dilated=config['res_layers'],
+                        kernel_initializer = initializer)
+    nn = keras.layers.MaxPool1D(pool_size=6)(nn)
+    nn = keras.layers.Dropout(config['res_dropout'])(nn)   
+    nn = keras.layers.ZeroPadding1D(padding=(1,2))(nn)    #pad to same length as embedding
+
+    #embedding input head
+    e_nn = keras.layers.BatchNormalization()(embed_inputs)
+    e_nn = keras.layers.Conv1D(filters=config['reduce_dim'],kernel_size=1,
+                             kernel_initializer = initializer)(e_nn) #dimension reduction
+    # e_nn = keras.layers.Conv1D(filters=config['conv_rep_filter'],
+    #                          kernel_size=config['conv_rep_kernel'],
+    #                          padding='same',
+    #                          kernel_initializer = initializer)(e_nn)
+    # e_nn = keras.layers.BatchNormalization()(e_nn)
+    # e_nn = keras.layers.Activation(config['rep_activation'])(e_nn)
+    # e_nn = keras.layers.Dropout(config['rep_dropout'])(e_nn)
+
+    #concatenation
+    nn = keras.layers.Concatenate()([nn,e_nn])
+
+    #conv block
+    nn = keras.layers.Conv1D(filters=config['conv2_filter'],
+                             kernel_size=config['conv2_kernel'],
+                             padding='same',
+                             kernel_initializer = initializer)(nn)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation('relu')(nn)
+    nn = keras.layers.MaxPool1D(pool_size=config['pool2_size'])(nn)
+    nn = keras.layers.Dropout(config['dropout2'])(nn)
+
+    #output block
+    nn = keras.layers.Flatten()(nn)
+    nn = keras.layers.Dense(config['dense'],kernel_initializer=initializer)(nn)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation('relu')(nn)
+    nn = keras.layers.Dropout(0.5)(nn)
+
+    nn = keras.layers.Dense(config['dense2'],kernel_initializer=initializer)(nn)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation('relu')(nn)
+    nn = keras.layers.Dropout(0.5)(nn)
+
+    outputs = keras.layers.Dense(1,activation = 'linear',kernel_initializer=initializer)(nn)
+
+    model =  keras.Model(inputs=[seq_inputs,embed_inputs], outputs=outputs)
+    return model
+
+def rep_mlp(input_shape,output_shape = 1):
+     #initializer
+    initializer = keras.initializers.RandomNormal(mean=0.0, stddev=0.005)
+    #input layer
+    inputs = keras.Input(shape=input_shape, name='sequence')
+    nn = keras.layers.Dense(512,kernel_initializer=initializer)(inputs)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation('relu')(nn)
+    nn = keras.layers.Dropout(0.5)(nn)
+
+    nn = keras.layers.Dense(256,kernel_initializer=initializer)(nn)
+    nn = keras.layers.BatchNormalization()(nn)
+    nn = keras.layers.Activation('relu')(nn)
+    nn = keras.layers.Dropout(0.5)(nn)
+
+    outputs = keras.layers.Dense(output_shape,activation = 'linear',kernel_initializer=initializer)(nn)
+
+    model =  keras.Model(inputs=inputs, outputs=outputs)
+    return model   
+
 ##### Dataset function #####
 def make_dataset(data_dir, split_label, data_stats, batch_size=64, seed=None,
-                 shuffle=True, coords=False, drop_remainder=False):
+                 shuffle=True, seqs=False, drop_remainder=False):
     """
     create tfr dataset from tfr files
     :param data_dir: dir with tfr files
@@ -164,12 +252,13 @@ def make_dataset(data_dir, split_label, data_stats, batch_size=64, seed=None,
     :param batch_size: batch size for dataset to be created
     :param seed: seed for shuffling
     :param shuffle: shuffle dataset
-    :param coords: return coordinates of the data points
+    :param coords: return onehot sequences of the dataset
     :param drop_remainder: drop last batch that might have smaller size then rest
     :return: dataset object
     """
-    seq_length = data_stats['seq_length']
-    seq_dim = data_stats['seq_dim']
+    onehot_length = data_stats['onehot_length']
+    embed_length = data_stats['embed_length']
+    embed_dim = data_stats['embed_dim']
     num_targets = data_stats['num_targets']
     tfr_path = '%s/tfrecords/%s-*.tfr' % (data_dir, split_label)
     tfr_files = natsorted(glob.glob(tfr_path))
@@ -195,7 +284,7 @@ def make_dataset(data_dir, split_label, data_stats, batch_size=64, seed=None,
         # flat mix files
         dataset = dataset.flat_map(file_to_records)
 
-    dataset = dataset.map(generate_parser(seq_length, seq_dim, num_targets, coords))
+    dataset = dataset.map(generate_parser(onehot_length, embed_length, embed_dim, num_targets, seqs))
     if shuffle:
         if seed:
             dataset = dataset.shuffle(32, seed=seed)
@@ -209,7 +298,7 @@ def make_dataset(data_dir, split_label, data_stats, batch_size=64, seed=None,
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     return dataset
 
-def generate_parser(seq_length, seq_dim, num_targets, coords):
+def generate_parser(onehot_length, embed_length, embed_dim, num_targets, seqs):
     def parse_proto(example_protos):
         """
         Parse TFRecord protobuf.
@@ -217,14 +306,14 @@ def generate_parser(seq_length, seq_dim, num_targets, coords):
         :return: parse tfr to dataset
         """
         # TFRecord constants
-        TFR_COORD = 'coordinate'
+        TFR_ONEHOT = 'onehot'
         TFR_INPUT = 'sequence'
         TFR_OUTPUT = 'target'
 
         # define features
-        if coords:
+        if seqs:
             features = {
-                TFR_COORD: tf.io.FixedLenFeature([], tf.string),
+                TFR_ONEHOT: tf.io.FixedLenFeature([], tf.string),
                 TFR_INPUT: tf.io.FixedLenFeature([], tf.string),
                 TFR_OUTPUT: tf.io.FixedLenFeature([], tf.string)
             }
@@ -237,22 +326,24 @@ def generate_parser(seq_length, seq_dim, num_targets, coords):
         # parse example into features
         parsed_features = tf.io.parse_single_example(example_protos, features=features)
 
-        if coords:
+        if seqs:
             # decode coords
-            coordinate = parsed_features[TFR_COORD]
+            onehot = tf.io.decode_raw(parsed_features[TFR_ONEHOT], tf.float16)
+            onehot = tf.reshape(onehot, [onehot_length, 4])
+            onehot = tf.cast(onehot, tf.float32)
 
         # decode sequence
         # sequence = tf.io.decode_raw(parsed_features[TFR_INPUT], tf.uint8)
         sequence = tf.io.decode_raw(parsed_features[TFR_INPUT], tf.float16)
-        sequence = tf.reshape(sequence, [seq_length, seq_dim])
+        sequence = tf.reshape(sequence, [embed_length, embed_dim])
         sequence = tf.cast(sequence, tf.float32)
 
         # decode targets
         targets = tf.io.decode_raw(parsed_features[TFR_OUTPUT], tf.float16)
         targets = tf.reshape(targets, [num_targets])
         targets = tf.cast(targets, tf.float32)
-        if coords:
-            return coordinate, sequence, targets
+        if seqs:
+            return (onehot, sequence), targets
         else:
             return sequence, targets
 

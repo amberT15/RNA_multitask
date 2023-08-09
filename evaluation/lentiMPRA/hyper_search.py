@@ -6,33 +6,36 @@ import pandas as pd
 import mpra_model
 from gopher import utils
 from ray import air,tune
+from ray.air import session
+from pathlib import Path
 from ray.tune.integration.keras import TuneReportCallback
 from ray.tune.search.hyperopt import HyperOptSearch
 from ray.tune.schedulers import AsyncHyperBandScheduler
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-cell_type = 'HepG2'
-RESULTS_DIR = '/home/ztang/multitask_RNA/evaluation/lenti_MPRA/results/'
-data_dir = '/home/ztang/multitask_RNA/data/lenti_MPRA_embed/HepG2_2B5_1000G/'
+cell_type = 'K562'
+RESULTS_DIR = '/home/ztang/multitask_RNA/evaluation/lenti_MPRA/results_k562/'
+data_dir = '/home/ztang/multitask_RNA/data/lenti_MPRA_embed/K562_2B5_1000G/'
 
 config = {
+    'cell_type': cell_type,
     'input_shape': (41,2560),
-    'reduce_dim':60,
-    'conv1_filter': 119,
-    'conv1_kernel':8,
+    'reduce_dim':tune.randint(60,120),
+    'conv1_filter': tune.randint(120,360),
+    'conv1_kernel':tune.randint(3,8),
     'activation':'exponential',
-    'dropout1':0.2,
-    'res_filter':3,
-    'res_layers':4,
-    'res_pool':4,
+    'dropout1':tune.choice([0.2,0.3,0.4]),
+    'res_filter':tune.randint(2,4),
+    'res_layers':tune.randint(1,6),
+    'res_pool':tune.randint(2,5),
     'res_dropout':0.2,
-    'conv2_filter':115,
-    'conv2_kernel':7,
-    'pool2_size':2,
+    'conv2_filter':tune.randint(256,360),
+    'conv2_kernel':tune.randint(2,6),
+    'pool2_size':tune.randint(2,5),
     'dropout2':0.2,
-    'dense':128,
-    'dense2':128,
-    'l_rate':0.001,
+    'dense':tune.randint(128,256),
+    'dense2':tune.randint(64,128),
+    'l_rate':tune.choice([0.001,0.0001,0.0005]),
     'batch_size':256
 }
 
@@ -49,22 +52,31 @@ def representation_training(config):
                   loss=loss,
                   metrics=['mse'])
     model.summary()
+
     earlyStopping_callback = tf.keras.callbacks.EarlyStopping(
             patience=10, restore_best_weights=True
         )
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss', factor=0.2,
             patience=5, min_lr=1e-8)
-
+    tune_trial_dir = Path(session.get_trial_dir())
+    model.save_weights(f'{tune_trial_dir}/weights')
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(f'{tune_trial_dir}/weights',
+                                        monitor='val_loss',
+                                        save_best_only=True,
+                                        mode = 'min',
+                                        save_freq='epoch',)
     model.fit(
          trainset,
           epochs=100,
           batch_size=config['batch_size'],
           shuffle=False,
           validation_data=validset,
-          callbacks=[earlyStopping_callback,reduce_lr,
+          callbacks=[earlyStopping_callback,reduce_lr,checkpoint,
                      TuneReportCallback({"loss": "loss","val_loss":'val_loss'})]
       )
+    tune_trial_dir = Path(session.get_trial_dir())
+    model.save_weights(f'{tune_trial_dir}/weights')
 
 def tune_lentiMPRA(num_training_iterations,num_samples):
     sched = AsyncHyperBandScheduler(
